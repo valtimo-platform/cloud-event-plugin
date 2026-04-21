@@ -4,7 +4,7 @@
 
 ## Overview
 
-This is a sample plugin demonstrating an API call action. It fetches data from a time API endpoint.
+This is a Cloud Event Plugin demonstrating an API call action. It fetches data from a time API endpoint.
 
 ## Dependencies
 
@@ -12,7 +12,7 @@ This is a sample plugin demonstrating an API call action. It fetches data from a
 
 ```kotlin
 dependencies {
-    implementation("com.ritense.valtimoplugins:sample-plugin:0.0.1")
+    implementation("com.ritense.valtimoplugins:cloud-event:0.0.1")
 }
 ```
 
@@ -21,7 +21,7 @@ dependencies {
 ```json
 {
   "dependencies": {
-    "@valtimo-plugins/sample-plugin": "0.0.1"
+    "@valtimo-plugins/cloud-event": "0.0.1"
   }
 }
 ```
@@ -31,7 +31,7 @@ In your `app.module.ts`:
 ```typescript
 import {
     SamplePluginModule, samplePluginSpecification,
-} from '@valtimo-plugins/sample-plugin';
+} from '@valtimo-plugins/cloud-event';
 
 @NgModule({
     imports: [
