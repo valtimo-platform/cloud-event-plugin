@@ -147,7 +147,7 @@
                 }
             }
         },
-        "@valtimo-plugins/sample-plugin": {
+        "@valtimo-plugins/cloud-event": {
             "projectType": "library",
             "root": "projects/plugin",
             "sourceRoot": "projects/plugin/src",
