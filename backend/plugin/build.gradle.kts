@@ -18,20 +18,20 @@ val kotlinLoggingVersion: String by project
 val mockitoKotlinVersion: String by project
 
 dependencies {
-    implementation("com.ritense.valtimo:authorization")
-    implementation("com.ritense.valtimo:case")
-    implementation("com.ritense.valtimo:contract")
-    implementation("com.ritense.valtimo:core")
-    implementation("com.ritense.valtimo:inbox")
-    implementation("com.ritense.valtimo:outbox")
-    implementation("com.ritense.valtimo:plugin-valtimo")
-    implementation("com.ritense.valtimo:process-document")
+    compileOnly("com.ritense.valtimo:authorization")
+    compileOnly("com.ritense.valtimo:case")
+    compileOnly("com.ritense.valtimo:contract")
+    compileOnly("com.ritense.valtimo:core")
+    compileOnly("com.ritense.valtimo:inbox")
+    compileOnly("com.ritense.valtimo:outbox")
+    compileOnly("com.ritense.valtimo:plugin-valtimo")
+    compileOnly("com.ritense.valtimo:process-document")
 
-    implementation(kotlin("reflect"))
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    compileOnly(kotlin("reflect"))
+    compileOnly("org.springframework.boot:spring-boot-starter-data-jpa")
 
-    implementation("com.fasterxml.jackson.core:jackson-databind")
-    implementation("io.github.oshai:kotlin-logging:$kotlinLoggingVersion")
+    compileOnly("com.fasterxml.jackson.core:jackson-databind")
+    compileOnly("io.github.oshai:kotlin-logging:$kotlinLoggingVersion")
 
     // Testing
     testImplementation("org.springframework.boot:spring-boot-starter-test")
