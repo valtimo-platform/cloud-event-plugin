@@ -14,9 +14,20 @@
  * limitations under the License.
  */
 
-export * from './lib/models';
-export * from './lib/cloud-event-plugin-module';
-export * from './lib/cloud-event-plugin.specification';
-export * from './lib/components/cloud-event-configuration/cloud-event-configuration.component';
-export * from './lib/components/publish-cloud-event/publish-cloud-event-configuration.component';
-export * from './lib/components/receive-cloud-event/receive-cloud-event-configuration.component';
+import {PluginConfigurationData} from '@valtimo/plugin';
+
+interface CloudEventConfig extends PluginConfigurationData {
+}
+
+interface PublishCloudEventConfig {
+  eventType: string;
+  resultType?: string;
+  resultId?: string;
+  data?: string;
+}
+
+interface ReceiveCloudEventConfig {
+  eventType?: string;
+}
+
+export {CloudEventConfig, PublishCloudEventConfig, ReceiveCloudEventConfig};

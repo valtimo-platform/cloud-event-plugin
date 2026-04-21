@@ -14,9 +14,21 @@
  * limitations under the License.
  */
 
-export * from './lib/models';
-export * from './lib/cloud-event-plugin-module';
-export * from './lib/cloud-event-plugin.specification';
-export * from './lib/components/cloud-event-configuration/cloud-event-configuration.component';
-export * from './lib/components/publish-cloud-event/publish-cloud-event-configuration.component';
-export * from './lib/components/receive-cloud-event/receive-cloud-event-configuration.component';
+package com.ritense.valtimoplugins.cloudevent.domain
+
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.Id
+import jakarta.persistence.Table
+import java.time.Instant
+
+@Entity
+@Table(name = "cloud_event_processed")
+class ProcessedCloudEvent(
+    @Id
+    @Column(name = "event_id")
+    val eventId: String,
+
+    @Column(name = "processed_at", nullable = false)
+    val processedAt: Instant = Instant.now(),
+)

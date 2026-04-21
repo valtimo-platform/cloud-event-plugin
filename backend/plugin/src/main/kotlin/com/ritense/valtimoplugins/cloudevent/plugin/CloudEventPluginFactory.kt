@@ -14,9 +14,23 @@
  * limitations under the License.
  */
 
-export * from './lib/models';
-export * from './lib/cloud-event-plugin-module';
-export * from './lib/cloud-event-plugin.specification';
-export * from './lib/components/cloud-event-configuration/cloud-event-configuration.component';
-export * from './lib/components/publish-cloud-event/publish-cloud-event-configuration.component';
-export * from './lib/components/receive-cloud-event/receive-cloud-event-configuration.component';
+package com.ritense.valtimoplugins.cloudevent.plugin
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.ritense.outbox.OutboxService
+import com.ritense.plugin.PluginFactory
+import com.ritense.plugin.service.PluginService
+
+open class CloudEventPluginFactory(
+    pluginService: PluginService,
+    private val outboxService: OutboxService,
+    private val objectMapper: ObjectMapper,
+) : PluginFactory<CloudEventPlugin>(pluginService) {
+
+    override fun create(): CloudEventPlugin {
+        return CloudEventPlugin(
+            outboxService,
+            objectMapper,
+        )
+    }
+}

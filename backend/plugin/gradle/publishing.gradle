@@ -23,8 +23,8 @@ pluginManager.withPlugin("maven-publish") {
                 version = pluginProperties.pluginVersion
 
                 pom {
-                    name = "Sample plugin module"
-                    description = "A module containing a sample plugin"
+                    name = "Cloud Event module"
+                    description = "The Cloud Event module for sending and receiving CloudEvents via the Valtimo outbox and inbox libraries"
                     developers {
                         developer {
                             id = "team-valtimo"
