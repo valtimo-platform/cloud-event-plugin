@@ -1,4 +1,4 @@
-rootProject.name = "valtimo-plugin-template"
+rootProject.name = "cloud-event-plugin"
 include(
     "backend",
     "backend:app",

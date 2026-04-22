@@ -25,8 +25,8 @@ class CloudEventPluginEvent(
     resultId: String?,
     result: ContainerNode<*>?,
 ) : BaseEvent(
-    type = type,
-    resultType = resultType,
-    resultId = resultId,
-    result = result,
-)
+        type = type,
+        resultType = resultType,
+        resultId = resultId,
+        result = result,
+    )

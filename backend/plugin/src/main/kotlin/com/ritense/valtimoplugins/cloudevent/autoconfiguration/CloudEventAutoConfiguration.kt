@@ -44,20 +44,18 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 @EnableJpaRepositories(basePackageClasses = [ProcessedCloudEventRepository::class])
 @EntityScan(basePackageClasses = [ProcessedCloudEvent::class])
 class CloudEventAutoConfiguration {
-
     @Bean
     @ConditionalOnMissingBean(CloudEventPluginFactory::class)
     fun cloudEventPluginFactory(
         pluginService: PluginService,
         outboxService: OutboxService,
         objectMapper: ObjectMapper,
-    ): CloudEventPluginFactory {
-        return CloudEventPluginFactory(
+    ): CloudEventPluginFactory =
+        CloudEventPluginFactory(
             pluginService,
             outboxService,
             objectMapper,
         )
-    }
 
     @Bean
     @ConditionalOnMissingBean(CloudEventProcessLinkListener::class)
@@ -71,8 +69,8 @@ class CloudEventAutoConfiguration {
         caseDefinitionService: CaseDefinitionService,
         objectMapper: ObjectMapper,
         processedCloudEventRepository: ProcessedCloudEventRepository,
-    ): ValtimoEventHandler {
-        return CloudEventProcessLinkListener(
+    ): ValtimoEventHandler =
+        CloudEventProcessLinkListener(
             pluginProcessLinkRepository,
             runtimeService,
             repositoryService,
@@ -83,7 +81,6 @@ class CloudEventAutoConfiguration {
             objectMapper,
             processedCloudEventRepository,
         )
-    }
 
     @Order(HIGHEST_PRECEDENCE + 34)
     @Bean

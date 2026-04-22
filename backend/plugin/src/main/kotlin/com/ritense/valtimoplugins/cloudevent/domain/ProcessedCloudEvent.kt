@@ -28,7 +28,6 @@ class ProcessedCloudEvent(
     @Id
     @Column(name = "event_id")
     val eventId: String,
-
     @Column(name = "processed_at", nullable = false)
     val processedAt: Instant = Instant.now(),
 )

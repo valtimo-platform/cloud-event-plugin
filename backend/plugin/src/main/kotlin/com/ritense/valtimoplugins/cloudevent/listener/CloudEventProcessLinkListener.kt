@@ -24,7 +24,6 @@ import com.ritense.document.domain.impl.request.NewDocumentRequest
 import com.ritense.inbox.ValtimoEvent
 import com.ritense.inbox.ValtimoEventHandler
 import com.ritense.plugin.domain.PluginProcessLink
-import com.ritense.plugin.repository.PluginProcessLinkRepository
 import com.ritense.processdocument.domain.ProcessDefinitionId
 import com.ritense.processdocument.domain.impl.request.NewDocumentAndStartProcessRequest
 import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService
@@ -55,7 +54,6 @@ open class CloudEventProcessLinkListener(
     private val objectMapper: ObjectMapper,
     private val processedCloudEventRepository: ProcessedCloudEventRepository,
 ) : ValtimoEventHandler {
-
     @RunWithoutAuthorization
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     override fun handle(event: ValtimoEvent) {
@@ -67,9 +65,10 @@ open class CloudEventProcessLinkListener(
         }
         processedCloudEventRepository.save(ProcessedCloudEvent(eventId = event.id))
 
-        val processLinks: List<PluginProcessLink> = pluginProcessLinkRepository
-            .findByPluginActionDefinitionKey(ACTION_KEY)
-            //.findByPluginDefinitionKeyAndPluginActionDefinitionKey(PLUGIN_KEY, ACTION_KEY)
+        val processLinks: List<PluginProcessLink> =
+            pluginProcessLinkRepository
+                .findByPluginActionDefinitionKey(ACTION_KEY)
+        // .findByPluginDefinitionKeyAndPluginActionDefinitionKey(PLUGIN_KEY, ACTION_KEY)
         if (processLinks.isEmpty()) {
             return
         }
@@ -85,30 +84,46 @@ open class CloudEventProcessLinkListener(
         }
     }
 
-    private fun matchesFilter(event: ValtimoEvent, processLink: PluginProcessLink): Boolean {
+    private fun matchesFilter(
+        event: ValtimoEvent,
+        processLink: PluginProcessLink,
+    ): Boolean {
         val properties = processLink.actionProperties ?: return true
         val filter = objectMapper.treeToValue(properties, ReceiveCloudEventProperties::class.java)
         return !(!filter.eventType.isNullOrBlank() && filter.eventType != event.type)
     }
 
-    private fun signalWaitingExecutions(processLink: PluginProcessLink, variables: Map<String, Any>) {
-        val executions = runtimeService.createExecutionQuery()
-            .processDefinitionId(processLink.processDefinitionId)
-            .activityId(processLink.activityId)
-            .list()
+    private fun signalWaitingExecutions(
+        processLink: PluginProcessLink,
+        variables: Map<String, Any>,
+    ) {
+        val executions =
+            runtimeService
+                .createExecutionQuery()
+                .processDefinitionId(processLink.processDefinitionId)
+                .activityId(processLink.activityId)
+                .list()
 
         if (executions.isEmpty()) {
-            logger.debug { "No waiting executions found for process definition '${processLink.processDefinitionId}' at activity '${processLink.activityId}'" }
+            logger.debug {
+                "No waiting executions found for process definition '${processLink.processDefinitionId}' at activity '${processLink.activityId}'"
+            }
             return
         }
 
         executions.forEach { execution ->
-            logger.info { "Signaling execution '${execution.id}' in process instance '${execution.processInstanceId}' at activity '${processLink.activityId}'" }
+            logger.info {
+                "Signaling execution '${execution.id}' in process instance '${execution.processInstanceId}' at activity '${processLink.activityId}'"
+            }
             continueExecution(execution, processLink, variables)
         }
     }
 
-    private fun continueExecution(execution: Execution, processLink: PluginProcessLink, variables: Map<String, Any>) {
+    private fun continueExecution(
+        execution: Execution,
+        processLink: PluginProcessLink,
+        variables: Map<String, Any>,
+    ) {
         when (processLink.activityType) {
             ActivityTypeWithEventName.RECEIVE_TASK_END ->
                 runtimeService.signal(execution.id, variables)
@@ -122,7 +137,10 @@ open class CloudEventProcessLinkListener(
         }
     }
 
-    private fun startProcessByMessage(processLink: PluginProcessLink, variables: Map<String, Any>) {
+    private fun startProcessByMessage(
+        processLink: PluginProcessLink,
+        variables: Map<String, Any>,
+    ) {
         if (processPropertyService.isSystemProcessById(processLink.processDefinitionId)) {
             startSystemProcessByMessage(processLink, variables)
         } else {
@@ -130,24 +148,34 @@ open class CloudEventProcessLinkListener(
         }
     }
 
-    private fun startSystemProcessByMessage(processLink: PluginProcessLink, variables: Map<String, Any>) {
+    private fun startSystemProcessByMessage(
+        processLink: PluginProcessLink,
+        variables: Map<String, Any>,
+    ) {
         val messageName = getMessageName(processLink)
-        logger.info { "Starting system process instance by message '$messageName' for process definition '${processLink.processDefinitionId}'" }
-        runtimeService.createMessageCorrelation(messageName)
+        logger.info {
+            "Starting system process instance by message '$messageName' for process definition '${processLink.processDefinitionId}'"
+        }
+        runtimeService
+            .createMessageCorrelation(messageName)
             .processDefinitionId(processLink.processDefinitionId)
             .setVariables(variables)
             .correlateStartMessage()
     }
 
-    private fun startDocumentProcessByMessage(processLink: PluginProcessLink, variables: Map<String, Any>) {
-        val processDefinitionCaseDefinition = try {
-            processDefinitionCaseDefinitionService
-                .findByProcessDefinitionId(ProcessDefinitionId(processLink.processDefinitionId))
-                //.findByProcessDefinitionIdOrNull(ProcessDefinitionId(processLink.processDefinitionId))
-                ?: return
-        } catch (_: Exception) {
-            return
-        }
+    private fun startDocumentProcessByMessage(
+        processLink: PluginProcessLink,
+        variables: Map<String, Any>,
+    ) {
+        val processDefinitionCaseDefinition =
+            try {
+                processDefinitionCaseDefinitionService
+                    .findByProcessDefinitionId(ProcessDefinitionId(processLink.processDefinitionId))
+                    // .findByProcessDefinitionIdOrNull(ProcessDefinitionId(processLink.processDefinitionId))
+                    ?: return
+            } catch (_: Exception) {
+                return
+            }
 
         val activeCaseDefinition =
             caseDefinitionService.getActiveCaseDefinition(processDefinitionCaseDefinition.id.caseDefinitionId.key)
@@ -160,20 +188,24 @@ open class CloudEventProcessLinkListener(
                 "because canInitializeDocument is false on the linked case definition."
         }
 
-        val processDefinitionKey = processDefinitionCaseDefinition.processDefinitionKey
-            ?: error("Process definition key not found for '${processLink.processDefinitionId}'")
+        val processDefinitionKey =
+            processDefinitionCaseDefinition.processDefinitionKey
+                ?: error("Process definition key not found for '${processLink.processDefinitionId}'")
 
-        val request = NewDocumentAndStartProcessRequest(
-            processDefinitionKey,
-            NewDocumentRequest(
-                activeCaseDefinition.id.key,
-                activeCaseDefinition.id.key,
-                activeCaseDefinition.id.versionTag.toString(),
-                JsonNodeFactory.instance.objectNode()
-            )
-        ).withProcessVars(variables)
+        val request =
+            NewDocumentAndStartProcessRequest(
+                processDefinitionKey,
+                NewDocumentRequest(
+                    activeCaseDefinition.id.key,
+                    activeCaseDefinition.id.key,
+                    activeCaseDefinition.id.versionTag.toString(),
+                    JsonNodeFactory.instance.objectNode(),
+                ),
+            ).withProcessVars(variables)
 
-        logger.info { "Starting document process for case '${activeCaseDefinition.id.key}' (${activeCaseDefinition.id.versionTag}) with process definition key '$processDefinitionKey'" }
+        logger.info {
+            "Starting document process for case '${activeCaseDefinition.id.key}' (${activeCaseDefinition.id.versionTag}) with process definition key '$processDefinitionKey'"
+        }
         val result = processDocumentService.newDocumentAndStartProcess(request)
         if (result.errors().isNotEmpty()) {
             error("Failed to start document process: ${result.errors()}")
@@ -181,10 +213,11 @@ open class CloudEventProcessLinkListener(
     }
 
     private fun buildProcessVariables(event: ValtimoEvent): Map<String, Any> {
-        val variables = mutableMapOf<String, Any>(
-            "cloudEventId" to event.id,
-            "cloudEventType" to event.type,
-        )
+        val variables =
+            mutableMapOf<String, Any>(
+                "cloudEventId" to event.id,
+                "cloudEventType" to event.type,
+            )
         event.date?.toString()?.let { variables["cloudEventDate"] = it }
         event.resultType?.let { variables["cloudEventResultType"] = it }
         event.resultId?.let { variables["cloudEventResultId"] = it }
@@ -195,13 +228,14 @@ open class CloudEventProcessLinkListener(
     private fun getMessageName(processLink: PluginProcessLink): String {
         val model = repositoryService.getBpmnModelInstance(processLink.processDefinitionId)
         val element = model.getModelElementById<CatchEvent>(processLink.activityId)
-        val messageEventDefinition = element.eventDefinitions
-            .filterIsInstance<MessageEventDefinition>()
-            .firstOrNull()
-            ?: throw IllegalStateException(
-                "No message event definition found on element '${processLink.activityId}' " +
-                    "in process definition '${processLink.processDefinitionId}'"
-            )
+        val messageEventDefinition =
+            element.eventDefinitions
+                .filterIsInstance<MessageEventDefinition>()
+                .firstOrNull()
+                ?: throw IllegalStateException(
+                    "No message event definition found on element '${processLink.activityId}' " +
+                        "in process definition '${processLink.processDefinitionId}'",
+                )
         return messageEventDefinition.message.name
     }
 

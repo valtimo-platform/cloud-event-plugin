@@ -35,18 +35,17 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 @Plugin(
     key = "cloud-event",
     title = "Cloud Event Plugin",
-    description = "Send and receive CloudEvents via RabbitMQ using the Valtimo outbox and inbox"
+    description = "Send and receive CloudEvents via RabbitMQ using the Valtimo outbox and inbox",
 )
 class CloudEventPlugin(
     private val outboxService: OutboxService,
     private val objectMapper: ObjectMapper,
 ) {
-
     @PluginAction(
         key = "publish-cloud-event",
         title = "Publish Cloud Event",
         description = "Publishes a CloudEvent via the outbox (RabbitMQ)",
-        activityTypes = [SEND_TASK_START, INTERMEDIATE_THROW_EVENT_START]
+        activityTypes = [SEND_TASK_START, INTERMEDIATE_THROW_EVENT_START],
     )
     fun publishCloudEvent(
         @PluginActionProperty eventType: String,
@@ -72,7 +71,7 @@ class CloudEventPlugin(
         key = "receive-cloud-event",
         title = "Receive Cloud Event",
         description = "Receives a CloudEvent from the inbox (RabbitMQ)",
-        activityTypes = [RECEIVE_TASK_END, INTERMEDIATE_CATCH_EVENT_END, MESSAGE_START_EVENT_START]
+        activityTypes = [RECEIVE_TASK_END, INTERMEDIATE_CATCH_EVENT_END, MESSAGE_START_EVENT_START],
     )
     fun receiveCloudEvent(
         @PluginActionProperty eventType: String?,

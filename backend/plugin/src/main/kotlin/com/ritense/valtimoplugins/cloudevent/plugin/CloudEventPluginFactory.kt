@@ -26,11 +26,9 @@ open class CloudEventPluginFactory(
     private val outboxService: OutboxService,
     private val objectMapper: ObjectMapper,
 ) : PluginFactory<CloudEventPlugin>(pluginService) {
-
-    override fun create(): CloudEventPlugin {
-        return CloudEventPlugin(
+    override fun create(): CloudEventPlugin =
+        CloudEventPlugin(
             outboxService,
             objectMapper,
         )
-    }
 }
