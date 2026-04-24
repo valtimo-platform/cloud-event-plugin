@@ -1,22 +1,22 @@
 [
-  {
-    "key": "TITEL",
-    "defaultSort": null
-  },
-  {
-    "key": "CREATIEDATUM",
-    "defaultSort": "DESC"
-  },
-  {
-    "key": "AUTEUR",
-    "defaultSort": null
-  },
-  {
-    "key": "BESTANDSOMVANG",
-    "defaultSort": null
-  },
-  {
-    "key": "INFORMATIEOBJECTTYPE_OMSCHRIJVING",
-    "defaultSort": null
-  }
+    {
+        "key": "TITEL",
+        "defaultSort": null
+    },
+    {
+        "key": "CREATIEDATUM",
+        "defaultSort": "DESC"
+    },
+    {
+        "key": "AUTEUR",
+        "defaultSort": null
+    },
+    {
+        "key": "BESTANDSOMVANG",
+        "defaultSort": null
+    },
+    {
+        "key": "INFORMATIEOBJECTTYPE_OMSCHRIJVING",
+        "defaultSort": null
+    }
 ]

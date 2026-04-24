@@ -1,13 +1,13 @@
 {
-  "display": "form",
-  "components": [
-    {
-      "key": "submit",
-      "type": "button",
-      "input": true,
-      "label": "Submit",
-      "tableView": false,
-      "disableOnInvalid": true
-    }
-  ]
+    "display": "form",
+    "components": [
+        {
+            "key": "submit",
+            "type": "button",
+            "input": true,
+            "label": "Submit",
+            "tableView": false,
+            "disableOnInvalid": true
+        }
+    ]
 }

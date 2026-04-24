@@ -32,3 +32,12 @@ spring-actuator:
 valtimo:
   plugin:
     encryption-secret: "abcdefghijklmnop"
+
+operaton:
+  bpm:
+    database:
+      type: postgres
+    generic-properties:
+      properties:
+        deploy-changed-only: true
+        enforceHistoryTimeToLive: false

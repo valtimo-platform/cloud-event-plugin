@@ -17,6 +17,15 @@
 val kotlinLoggingVersion: String by project
 val mockitoKotlinVersion: String by project
 
+dockerCompose {
+    setProjectName("cloud-event")
+    isRequiredBy(project.tasks.integrationTesting)
+
+    tasks.integrationTesting {
+        useComposeFiles.addAll("$rootDir/docker-resources/docker-compose-base-test.yml")
+    }
+}
+
 dependencies {
     compileOnly("com.ritense.valtimo:authorization")
     compileOnly("com.ritense.valtimo:case")
@@ -34,11 +43,23 @@ dependencies {
     compileOnly("io.github.oshai:kotlin-logging:$kotlinLoggingVersion")
 
     // Testing
+    testImplementation("com.ritense.valtimo:building-block")
+    testImplementation("com.ritense.valtimo:contract")
+    testImplementation("com.ritense.valtimo:core")
+    testImplementation("com.ritense.valtimo:plugin")
+    testImplementation("com.ritense.valtimo:temporary-resource-storage")
+    testImplementation("com.ritense.valtimo:test-utils-common")
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.mockito:mockito-core")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+
+    testImplementation("org.postgresql:postgresql")
+
+    testImplementation("com.ritense.valtimo:authorization")
+    testImplementation("com.ritense.valtimo:case")
+    testImplementation("com.ritense.valtimo:inbox")
+    testImplementation("com.ritense.valtimo:outbox")
+    testImplementation("com.ritense.valtimo:plugin-valtimo")
+    testImplementation("com.ritense.valtimo:process-document")
 }
 
 apply(from = "gradle/publishing.gradle")

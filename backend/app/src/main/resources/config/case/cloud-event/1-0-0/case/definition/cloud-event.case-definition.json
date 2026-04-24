@@ -1,8 +1,8 @@
 {
-  "key": "cloud-event",
-  "name": "Cloud Event",
-  "versionTag": "1.0.0",
-  "final": false,
-  "canHaveAssignee": false,
-  "autoAssignTasks": false
+    "key": "cloud-event",
+    "name": "Cloud Event",
+    "versionTag": "1.0.0",
+    "final": false,
+    "canHaveAssignee": false,
+    "autoAssignTasks": false
 }
