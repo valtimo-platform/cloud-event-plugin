@@ -18,16 +18,17 @@ package com.ritense.valtimoplugins.cloudevent.listener
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
+import com.ritense.authorization.AuthorizationContext
 import com.ritense.authorization.annotation.RunWithoutAuthorization
 import com.ritense.case.service.CaseDefinitionService
 import com.ritense.document.domain.impl.request.NewDocumentRequest
+import com.ritense.document.service.DocumentService
 import com.ritense.inbox.ValtimoEvent
 import com.ritense.inbox.ValtimoEventHandler
 import com.ritense.plugin.domain.PluginProcessLink
 import com.ritense.processdocument.domain.ProcessDefinitionId
-import com.ritense.processdocument.domain.impl.request.NewDocumentAndStartProcessRequest
 import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService
-import com.ritense.processdocument.service.ProcessDocumentService
+import com.ritense.processdocument.service.ProcessDocumentAssociationService
 import com.ritense.processlink.domain.ActivityTypeWithEventName
 import com.ritense.processlink.repository.ValtimoPluginProcessLinkRepository
 import com.ritense.valtimo.service.ProcessPropertyService
@@ -42,6 +43,7 @@ import org.operaton.bpm.model.bpmn.instance.CatchEvent
 import org.operaton.bpm.model.bpmn.instance.MessageEventDefinition
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
+import java.util.UUID
 
 open class CloudEventProcessLinkListener(
     private val pluginProcessLinkRepository: ValtimoPluginProcessLinkRepository,
@@ -49,7 +51,8 @@ open class CloudEventProcessLinkListener(
     private val repositoryService: RepositoryService,
     private val processPropertyService: ProcessPropertyService,
     private val processDefinitionCaseDefinitionService: ProcessDefinitionCaseDefinitionService,
-    private val processDocumentService: ProcessDocumentService,
+    private val documentService: DocumentService,
+    private val processDocumentAssociationService: ProcessDocumentAssociationService,
     private val caseDefinitionService: CaseDefinitionService,
     private val objectMapper: ObjectMapper,
     private val processedCloudEventRepository: ProcessedCloudEventRepository,
@@ -70,6 +73,7 @@ open class CloudEventProcessLinkListener(
                 .findByPluginActionDefinitionKey(ACTION_KEY)
         // .findByPluginDefinitionKeyAndPluginActionDefinitionKey(PLUGIN_KEY, ACTION_KEY)
         if (processLinks.isEmpty()) {
+            logger.debug { "Cloud event '${event.id}' matched no receive-cloud-event process link" }
             return
         }
 
@@ -171,15 +175,28 @@ open class CloudEventProcessLinkListener(
             try {
                 processDefinitionCaseDefinitionService
                     .findByProcessDefinitionId(ProcessDefinitionId(processLink.processDefinitionId))
-                    // .findByProcessDefinitionIdOrNull(ProcessDefinitionId(processLink.processDefinitionId))
-                    ?: return
-            } catch (_: Exception) {
+                    ?: run {
+                        logger.warn {
+                            "No case definition linked to process definition '${processLink.processDefinitionId}'"
+                        }
+                        return
+                    }
+            } catch (e: Exception) {
+                logger.warn(e) {
+                    "No case definition linked to process definition '${processLink.processDefinitionId}'"
+                }
                 return
             }
 
+        // Only the deployed, active version of a case definition may be started. Without
+        // this an old process link would keep creating cases against a superseded version.
         val activeCaseDefinition =
             caseDefinitionService.getActiveCaseDefinition(processDefinitionCaseDefinition.id.caseDefinitionId.key)
         if (activeCaseDefinition?.id != processDefinitionCaseDefinition.id.caseDefinitionId) {
+            logger.debug {
+                "Skipping process link for '${processLink.processDefinitionId}': it points at a case definition " +
+                    "version that is no longer active"
+            }
             return
         }
 
@@ -188,27 +205,56 @@ open class CloudEventProcessLinkListener(
                 "because canInitializeDocument is false on the linked case definition."
         }
 
-        val processDefinitionKey =
-            processDefinitionCaseDefinition.processDefinitionKey
-                ?: error("Process definition key not found for '${processLink.processDefinitionId}'")
-
-        val request =
-            NewDocumentAndStartProcessRequest(
-                processDefinitionKey,
-                NewDocumentRequest(
-                    activeCaseDefinition.id.key,
-                    activeCaseDefinition.id.key,
-                    activeCaseDefinition.id.versionTag.toString(),
-                    JsonNodeFactory.instance.objectNode(),
-                ),
-            ).withProcessVars(variables)
-
+        val messageName = getMessageName(processLink)
         logger.info {
-            "Starting document process for case '${activeCaseDefinition.id.key}' (${activeCaseDefinition.id.versionTag}) with process definition key '$processDefinitionKey'"
+            "Creating a case for case definition '${activeCaseDefinition.id.key}' " +
+                "(${activeCaseDefinition.id.versionTag}) by correlating start message '$messageName' to " +
+                "'${processLink.activityId}'"
         }
-        val result = processDocumentService.newDocumentAndStartProcess(request)
-        if (result.errors().isNotEmpty()) {
-            error("Failed to start document process: ${result.errors()}")
+
+        val newDocumentRequest =
+            NewDocumentRequest(
+                activeCaseDefinition.id.key,
+                activeCaseDefinition.id.key,
+                activeCaseDefinition.id.versionTag.toString(),
+                JsonNodeFactory.instance.objectNode(),
+            )
+        val documentResult =
+            AuthorizationContext.runWithoutAuthorization {
+                documentService.createDocument(newDocumentRequest)
+            }
+        val document =
+            documentResult.resultingDocument().orElse(null)
+                ?: error("Failed to create a case for the incoming cloud event: ${documentResult.errors()}")
+
+        // Correlated to the start message rather than started by process definition key.
+        // ProcessDocumentService.newDocumentAndStartProcess, the obvious alternative, starts a
+        // process by key, and Operaton then enters it at whichever start event it considers the
+        // process's initial activity. A process with both a plain start event (someone fills in
+        // the start form) and this message start event is a normal shape, and on that shape "by
+        // key" silently lands on the plain one: the event's own start event never runs, so
+        // neither do its execution listeners, and the case is created without any of the cloud
+        // event on it.
+        val processInstance =
+            runtimeService
+                .createMessageCorrelation(messageName)
+                .processDefinitionId(processLink.processDefinitionId)
+                // Valtimo resolves `doc:` for a process instance through the process-document
+                // association, and falls back to the business key while that association does
+                // not exist yet. It cannot exist yet here - it is created below, once the
+                // instance has an id - so the start event's own listeners depend on this
+                // business key to reach the document. Valtimo's own start path sets it the
+                // same way.
+                .processInstanceBusinessKey(document.id().toString())
+                .setVariables(variables)
+                .correlateStartMessage()
+
+        AuthorizationContext.runWithoutAuthorization {
+            processDocumentAssociationService.createProcessDocumentInstance(
+                processInstance.id,
+                UUID.fromString(document.id().toString()),
+                repositoryService.getProcessDefinition(processLink.processDefinitionId).name,
+            )
         }
     }
 
@@ -227,16 +273,21 @@ open class CloudEventProcessLinkListener(
 
     private fun getMessageName(processLink: PluginProcessLink): String {
         val model = repositoryService.getBpmnModelInstance(processLink.processDefinitionId)
-        val element = model.getModelElementById<CatchEvent>(processLink.activityId)
-        val messageEventDefinition =
-            element.eventDefinitions
-                .filterIsInstance<MessageEventDefinition>()
-                .firstOrNull()
-                ?: throw IllegalStateException(
-                    "No message event definition found on element '${processLink.activityId}' " +
-                        "in process definition '${processLink.processDefinitionId}'",
+        val element =
+            model.getModelElementById<CatchEvent>(processLink.activityId)
+                ?: error(
+                    "No catch event '${processLink.activityId}' in process definition " +
+                        "'${processLink.processDefinitionId}'",
                 )
-        return messageEventDefinition.message.name
+        return element.eventDefinitions
+            .filterIsInstance<MessageEventDefinition>()
+            .firstOrNull()
+            ?.message
+            ?.name
+            ?: error(
+                "No message event definition on element '${processLink.activityId}' in process definition " +
+                    "'${processLink.processDefinitionId}'",
+            )
     }
 
     companion object {

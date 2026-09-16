@@ -86,7 +86,9 @@ When a CloudEvent is received, the following process variables are set on the ta
     - **Receive Task** -- the waiting execution is signaled with `runtimeService.signal()`.
     - **Intermediate Catch Event** -- a message is correlated to the waiting execution using the BPMN message name.
     - **Message Start Event** -- a new process instance is started. For document processes, a new document is created
-      and the process is started via `ProcessDocumentService`. For system processes, the message is correlated directly.
+      and the start message of the linked element is correlated to it, so the process starts at that event and not at
+      whichever start event the engine considers the process's initial activity. For system processes, the message is
+      correlated directly.
 
 ## Database
 

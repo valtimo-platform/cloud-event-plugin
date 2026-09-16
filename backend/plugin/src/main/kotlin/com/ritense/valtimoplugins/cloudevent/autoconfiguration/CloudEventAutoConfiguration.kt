@@ -18,11 +18,12 @@ package com.ritense.valtimoplugins.cloudevent.autoconfiguration
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.ritense.case.service.CaseDefinitionService
+import com.ritense.document.service.DocumentService
 import com.ritense.inbox.ValtimoEventHandler
 import com.ritense.outbox.OutboxService
 import com.ritense.plugin.service.PluginService
 import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService
-import com.ritense.processdocument.service.ProcessDocumentService
+import com.ritense.processdocument.service.ProcessDocumentAssociationService
 import com.ritense.processlink.repository.ValtimoPluginProcessLinkRepository
 import com.ritense.valtimo.contract.config.LiquibaseMasterChangeLogLocation
 import com.ritense.valtimo.service.ProcessPropertyService
@@ -65,7 +66,8 @@ class CloudEventAutoConfiguration {
         repositoryService: RepositoryService,
         processPropertyService: ProcessPropertyService,
         processDefinitionCaseDefinitionService: ProcessDefinitionCaseDefinitionService,
-        processDocumentService: ProcessDocumentService,
+        documentService: DocumentService,
+        processDocumentAssociationService: ProcessDocumentAssociationService,
         caseDefinitionService: CaseDefinitionService,
         objectMapper: ObjectMapper,
         processedCloudEventRepository: ProcessedCloudEventRepository,
@@ -76,7 +78,8 @@ class CloudEventAutoConfiguration {
             repositoryService,
             processPropertyService,
             processDefinitionCaseDefinitionService,
-            processDocumentService,
+            documentService,
+            processDocumentAssociationService,
             caseDefinitionService,
             objectMapper,
             processedCloudEventRepository,
