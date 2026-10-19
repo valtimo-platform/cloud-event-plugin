@@ -1,0 +1,108 @@
+{
+    "display": "form",
+    "components": [
+        {
+            "key": "deliverableInfoPanel",
+            "type": "panel",
+            "title": "Deliverable informatie",
+            "components": [
+                {
+                    "label": "Deliverable ID",
+                    "key": "deliverableId",
+                    "type": "textfield",
+                    "input": true,
+                    "disabled": true,
+                    "tableView": true,
+                    "properties": {
+                        "sourceKey": "doc:/deliverableId"
+                    }
+                },
+                {
+                    "label": "Titel",
+                    "key": "deliverableTitle",
+                    "type": "textfield",
+                    "input": true,
+                    "disabled": true,
+                    "tableView": true,
+                    "properties": {
+                        "sourceKey": "doc:/deliverableTitle"
+                    }
+                },
+                {
+                    "label": "Status",
+                    "key": "deliverableStatus",
+                    "type": "textfield",
+                    "input": true,
+                    "disabled": true,
+                    "tableView": true,
+                    "properties": {
+                        "sourceKey": "doc:/deliverableStatus"
+                    }
+                },
+                {
+                    "label": "Project",
+                    "key": "projectKey",
+                    "type": "textfield",
+                    "input": true,
+                    "disabled": true,
+                    "tableView": true,
+                    "properties": {
+                        "sourceKey": "doc:/projectKey"
+                    }
+                }
+            ]
+        },
+        {
+            "key": "beoordelingPanel",
+            "type": "panel",
+            "title": "Beoordeling",
+            "components": [
+                {
+                    "label": "Goedgekeurd?",
+                    "key": "goedgekeurd",
+                    "type": "radio",
+                    "input": true,
+                    "values": [
+                        {
+                            "label": "Ja",
+                            "value": "true"
+                        },
+                        {
+                            "label": "Nee",
+                            "value": "false"
+                        }
+                    ],
+                    "validate": {
+                        "required": true
+                    },
+                    "tableView": false,
+                    "properties": {
+                        "sourceKey": "doc:/goedgekeurd",
+                        "targetKey": "doc:/goedgekeurd"
+                    }
+                },
+                {
+                    "label": "Opmerking",
+                    "key": "opmerking",
+                    "type": "textarea",
+                    "input": true,
+                    "placeholder": "Eventuele opmerkingen bij de beoordeling",
+                    "autoExpand": true,
+                    "tableView": true,
+                    "properties": {
+                        "sourceKey": "doc:/opmerking",
+                        "targetKey": "doc:/opmerking"
+                    }
+                }
+            ]
+        },
+        {
+            "key": "submit",
+            "type": "button",
+            "input": true,
+            "label": "Beoordeling opslaan",
+            "tableView": false,
+            "disableOnInvalid": true
+        }
+    ]
+}

@@ -1,0 +1,7 @@
+[
+    {
+        "processDefinitionKey": "sales-deliverable-opgeleverd-process",
+        "canInitializeDocument": true,
+        "startableByUser": false
+    }
+]

@@ -1,0 +1,85 @@
+[
+    {
+        "key": "overzicht",
+        "widgets": [
+            {
+                "type": "fields",
+                "key": "deliverable-info",
+                "title": "Deliverable Informatie",
+                "width": 2,
+                "highContrast": true,
+                "properties": {
+                    "columns": [
+                        [
+                            {
+                                "key": "deliverableId",
+                                "title": "Deliverable ID",
+                                "value": "doc:/deliverableId",
+                                "displayProperties": {
+                                    "type": "text"
+                                }
+                            },
+                            {
+                                "key": "deliverableTitle",
+                                "title": "Titel",
+                                "value": "doc:/deliverableTitle",
+                                "displayProperties": {
+                                    "type": "text"
+                                }
+                            }
+                        ],
+                        [
+                            {
+                                "key": "deliverableStatus",
+                                "title": "Status",
+                                "value": "doc:/deliverableStatus",
+                                "displayProperties": {
+                                    "type": "text"
+                                }
+                            },
+                            {
+                                "key": "projectKey",
+                                "title": "Project",
+                                "value": "doc:/projectKey",
+                                "displayProperties": {
+                                    "type": "text"
+                                }
+                            }
+                        ]
+                    ]
+                }
+            },
+            {
+                "type": "fields",
+                "key": "beoordeling-info",
+                "title": "Beoordeling",
+                "width": 2,
+                "highContrast": false,
+                "properties": {
+                    "columns": [
+                        [
+                            {
+                                "key": "goedgekeurd",
+                                "title": "Goedgekeurd",
+                                "value": "doc:/goedgekeurd",
+                                "displayProperties": {
+                                    "type": "boolean"
+                                }
+                            }
+                        ],
+                        [
+                            {
+                                "key": "opmerking",
+                                "title": "Opmerking",
+                                "value": "doc:/opmerking",
+                                "displayProperties": {
+                                    "type": "text"
+                                }
+                            }
+                        ]
+                    ]
+                }
+            }
+        ]
+    }
+]

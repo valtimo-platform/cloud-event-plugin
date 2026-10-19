@@ -13,6 +13,9 @@ dependencies {
     implementation("org.postgresql:postgresql")
     implementation("io.github.oshai:kotlin-logging:$kotlinLoggingVersion")
 
+    // Spring Cloud Stream for RabbitMQ inbox consumer
+    implementation("org.springframework.cloud:spring-cloud-starter-stream-rabbit:4.2.1")
+
     if (System.getProperty("os.arch") == "aarch64") {
         runtimeOnly("io.netty:netty-resolver-dns-native-macos:$nettyResolverDnsNativeMacOsVersion:osx-aarch_64")
     }

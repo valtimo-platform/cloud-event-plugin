@@ -1,0 +1,131 @@
+{
+    "id": "masterdata-hub",
+    "realm": "masterdata-hub",
+    "enabled": true,
+    "sslRequired": "external",
+    "roles": {
+        "realm": [
+            {
+                "id": "mdh-realm-role-product-read",
+                "name": "MDH_PRODUCT_READ",
+                "description": "Read products from Master Data Hub",
+                "composite": false
+            },
+            {
+                "id": "mdh-realm-role-product-write",
+                "name": "MDH_PRODUCT_WRITE",
+                "description": "Create/update products in Master Data Hub",
+                "composite": false
+            },
+            {
+                "id": "mdh-realm-role-project-read",
+                "name": "MDH_PROJECT_READ",
+                "description": "Read projects from Master Data Hub",
+                "composite": false
+            },
+            {
+                "id": "mdh-realm-role-project-write",
+                "name": "MDH_PROJECT_WRITE",
+                "description": "Create/update projects in Master Data Hub",
+                "composite": false
+            },
+            {
+                "id": "mdh-realm-role-deliverable-read",
+                "name": "MDH_DELIVERABLE_READ",
+                "description": "Read deliverables from Master Data Hub",
+                "composite": false
+            },
+            {
+                "id": "mdh-realm-role-deliverable-write",
+                "name": "MDH_DELIVERABLE_WRITE",
+                "description": "Create/update deliverables in Master Data Hub",
+                "composite": false
+            }
+        ]
+    },
+    "clients": [
+        {
+            "id": "mdh-client-valtimo",
+            "clientId": "valtimo",
+            "name": "Valtimo",
+            "description": "Valtimo BPM platform - accessing Master Data Hub API",
+            "enabled": true,
+            "clientAuthenticatorType": "client-secret",
+            "secret": "valtimo-mdh-secret",
+            "serviceAccountsEnabled": true,
+            "publicClient": false,
+            "standardFlowEnabled": false,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": false,
+            "protocol": "openid-connect",
+            "attributes": {
+                "oauth2.device.authorization.grant.enabled": "false",
+                "oidc.ciba.grant.enabled": "false"
+            },
+            "fullScopeAllowed": true,
+            "defaultClientScopes": [
+                "web-origins",
+                "roles",
+                "profile",
+                "email"
+            ]
+        }
+    ],
+    "users": [
+        {
+            "id": "mdh-service-account-valtimo",
+            "username": "service-account-valtimo",
+            "enabled": true,
+            "serviceAccountClientId": "valtimo",
+            "realmRoles": [
+                "MDH_PRODUCT_READ",
+                "MDH_PRODUCT_WRITE",
+                "MDH_PROJECT_READ",
+                "MDH_PROJECT_WRITE",
+                "MDH_DELIVERABLE_READ",
+                "MDH_DELIVERABLE_WRITE"
+            ]
+        }
+    ],
+    "clientScopes": [
+        {
+            "id": "mdh-scope-roles",
+            "name": "roles",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "false"
+            },
+            "protocolMappers": [
+                {
+                    "id": "mdh-mapper-realm-roles",
+                    "name": "realm roles",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-usermodel-realm-role-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "multivalued": "true",
+                        "user.attribute": "foo",
+                        "access.token.claim": "true",
+                        "claim.name": "realm_access.roles",
+                        "jsonType.label": "String"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "mdh-scope-profile",
+            "name": "profile",
+            "protocol": "openid-connect"
+        },
+        {
+            "id": "mdh-scope-email",
+            "name": "email",
+            "protocol": "openid-connect"
+        },
+        {
+            "id": "mdh-scope-web-origins",
+            "name": "web-origins",
+            "protocol": "openid-connect"
+        }
+    ]
+}

@@ -1,0 +1,8 @@
+{
+    "key": "deliverable-opleveren",
+    "name": "Deliverable Opleveren",
+    "versionTag": "1.0.0",
+    "final": false,
+    "canHaveAssignee": true,
+    "autoAssignTasks": true
+}

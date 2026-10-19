@@ -60,6 +60,7 @@ services:
     volumes:
       - ./imports/plugin-rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - ./imports/plugin-rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./imports/plugin-rabbitmq/advanced.config:/etc/rabbitmq/advanced.config:ro
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -67,9 +68,52 @@ services:
       RABBITMQ_CONFIG_FILE: /etc/rabbitmq/rabbitmq.conf
     command: >
       bash -c "
-        rabbitmq-plugins enable --offline rabbitmq_stream rabbitmq_stream_management &&
+        rabbitmq-plugins enable --offline rabbitmq_stream rabbitmq_stream_management rabbitmq_shovel rabbitmq_shovel_management &&
         rabbitmq-server
       "
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  plugin-host:
+    image: ritense/valtimo-plugin-host:1.0.0
+    container_name: plugin-docker-compose-plugin-host
+    depends_on:
+      - plugin-host-database
+    ports:
+      - "8092:8090"
+    environment:
+      DB_HOST: plugin-host-database
+      DB_PORT: 5432
+      DB_NAME: pluginhost
+      DB_USER: pluginhost
+      DB_PASSWORD: pluginhost
+      ADMIN_TOKEN: admin-secret-token
+      BASE_URL: http://plugin-host:8090
+      GZAC_CALLBACK_URL: http://host.docker.internal:8080
+      ALLOWED_ORIGINS: http://localhost:4200,http://localhost:8080
+      PLUGIN_PREINSTALL_DIR: /plugins
+      PLUGIN_PREINSTALL_OVERWRITE: "true"
+      HOST_ALLOW_HTTP: "true"
+      HOST_ALLOW_PRIVATE_NETWORK: "true"
+    tmpfs:
+      - /app/.tmp:uid=1000,gid=1000
+    volumes:
+      - ./imports/plugins:/plugins:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  plugin-host-database:
+    image: postgres:17.4
+    container_name: plugin-docker-compose-plugin-host-database
+    ports:
+      - "54321:5432"
+    environment:
+      POSTGRES_USER: pluginhost
+      POSTGRES_PASSWORD: pluginhost
+      POSTGRES_DB: pluginhost
+    volumes:
+      - plugin-host-database-data:/var/lib/postgresql/data
 
 volumes:
   plugin-database-data:
+  plugin-host-database-data:
