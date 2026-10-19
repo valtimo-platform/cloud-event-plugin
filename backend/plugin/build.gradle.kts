@@ -60,6 +60,8 @@ dependencies {
     testImplementation("com.ritense.valtimo:outbox")
     testImplementation("com.ritense.valtimo:plugin-valtimo")
     testImplementation("com.ritense.valtimo:process-document")
+
+    testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
 }
 
 apply(from = "gradle/publishing.gradle")
