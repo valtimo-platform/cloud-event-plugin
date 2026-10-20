@@ -19,7 +19,6 @@ package com.ritense.valtimoplugins.cloudevent.autoconfiguration
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.ritense.case.service.CaseDefinitionService
 import com.ritense.document.service.DocumentService
-import com.ritense.inbox.ValtimoEventHandler
 import com.ritense.outbox.OutboxService
 import com.ritense.plugin.service.PluginService
 import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService
@@ -71,7 +70,7 @@ class CloudEventAutoConfiguration {
         caseDefinitionService: CaseDefinitionService,
         objectMapper: ObjectMapper,
         processedCloudEventRepository: ProcessedCloudEventRepository,
-    ): ValtimoEventHandler =
+    ): CloudEventProcessLinkListener =
         CloudEventProcessLinkListener(
             pluginProcessLinkRepository,
             runtimeService,

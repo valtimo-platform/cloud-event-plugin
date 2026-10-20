@@ -106,29 +106,3 @@ if (signingConfigSet) {
         sign publishing.publications.maven
     }
 }
-
-
-def filterVersionLine(bufferedReader) {
-    def line
-    def versionLine
-    while ((line = bufferedReader.readLine()) != null) {
-        if ((line.startsWith('version') && !line.startsWith('version.')) || line.startsWith('projectVersion') || line.startsWith('version.semver')) {
-            versionLine = line.split('=')
-        }
-    }
-    return versionLine
-}
-
-def parseProjectVersion(filePath) {
-    def fileString = new File(filePath).getText('UTF-8')
-    def bufferedReader = new BufferedReader(new StringReader(fileString))
-    def versionLine = filterVersionLine(bufferedReader)
-
-    // strip off -SNAPSHOT postfixes
-    def projectVersion = versionLine[1]
-    projectVersion = projectVersion.trim()
-    if (projectVersion.contains('-')) {
-        projectVersion = projectVersion.split('-')[0]
-    }
-    return projectVersion
-}

@@ -16,6 +16,7 @@
 
 package com.ritense.valtimoplugins.cloudevent.plugin
 
+import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ContainerNode
@@ -54,7 +55,11 @@ class CloudEventPlugin(
         @PluginActionProperty data: Any?,
     ) {
         logger.debug { "Publishing cloud event with type '$eventType'" }
-        val jsonNode = data?.let { objectMapper.convertValue<JsonNode>(it) }
+        // JSON typed into the action's data field arrives as a string, and is published as JSON rather than as text.
+        val payload = data.takeUnless { it is String && it.isBlank() }
+        val jsonNode =
+            (payload as? String)?.let(::parseJsonContainerOrNull)
+                ?: payload?.let { objectMapper.convertValue<JsonNode>(it) }
         val resultNode = jsonNode as? ContainerNode<*> ?: objectMapper.createObjectNode().set("data", jsonNode)
         outboxService.send {
             CloudEventPluginEvent(
@@ -78,6 +83,13 @@ class CloudEventPlugin(
     ) {
         logger.debug { "Receive cloud event action registered for type filter: $eventType" }
     }
+
+    private fun parseJsonContainerOrNull(value: String): ContainerNode<*>? =
+        try {
+            objectMapper.readTree(value) as? ContainerNode<*>
+        } catch (_: JsonProcessingException) {
+            null
+        }
 
     companion object {
         private val logger = KotlinLogging.logger {}

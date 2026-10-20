@@ -45,7 +45,7 @@ const cloudEventPluginSpecification: PluginSpecification = {
       resultIdTooltip: "Optionele identificatie van het resultaat. Ondersteunt value resolvers.",
       data: "Data",
       dataTooltip: "Optionele JSON data payload voor het CloudEvent. Ondersteunt value resolvers.",
-      receiveEventTypeTooltip: "Optioneel filter op het CloudEvent type. Laat leeg om alle events te ontvangen.",
+      receiveEventTypeTooltip: "Filter op het CloudEvent type. Leeg ontvangt alle events, ook die van Valtimo zelf; verplicht op een message start event.",
     },
     en: {
       title: "Cloud Event",
@@ -63,7 +63,7 @@ const cloudEventPluginSpecification: PluginSpecification = {
       resultIdTooltip: "Optional identifier of the result. Supports value resolvers.",
       data: "Data",
       dataTooltip: "Optional JSON data payload for the CloudEvent. Supports value resolvers.",
-      receiveEventTypeTooltip: "Optional filter on CloudEvent type. Leave empty to receive all events.",
+      receiveEventTypeTooltip: "Filter on CloudEvent type. Empty receives all events, Valtimo's own included; required on a message start event.",
     },
   },
 };

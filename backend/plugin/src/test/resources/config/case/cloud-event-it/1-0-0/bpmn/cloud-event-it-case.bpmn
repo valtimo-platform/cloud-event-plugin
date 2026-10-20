@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A case process with a plain start event besides the message start event: started by process
+  key, the engine would enter it at the plain one.
+-->
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  id="Definitions_cloud_event_it" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="cloud-event-it-case" name="Cloud event IT case" isExecutable="true"
+                camunda:versionTag="CD:cloud-event-it:1.0.0" camunda:historyTimeToLive="1">
+    <bpmn:startEvent id="StartByForm">
+      <bpmn:outgoing>FromForm</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="FromForm" sourceRef="StartByForm" targetRef="StartedByForm"/>
+    <bpmn:receiveTask id="StartedByForm">
+      <bpmn:incoming>FromForm</bpmn:incoming>
+    </bpmn:receiveTask>
+    <bpmn:startEvent id="StartByCloudEvent">
+      <bpmn:outgoing>FromCloudEvent</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="StartByCloudEventMessage" messageRef="CloudEventItCaseStart"/>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="FromCloudEvent" sourceRef="StartByCloudEvent" targetRef="StartedByCloudEvent"/>
+    <bpmn:receiveTask id="StartedByCloudEvent">
+      <bpmn:incoming>FromCloudEvent</bpmn:incoming>
+    </bpmn:receiveTask>
+  </bpmn:process>
+  <bpmn:message id="CloudEventItCaseStart" name="CloudEventItCaseStart"/>
+</bpmn:definitions>

@@ -1,0 +1,8 @@
+{
+    "$id": "cloud-event-it.schema",
+    "type": "object",
+    "title": "Cloud Event IT",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "properties": {},
+    "additionalProperties": true
+}

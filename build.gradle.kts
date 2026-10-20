@@ -4,7 +4,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.springframework.boot.gradle.tasks.bundling.BootJar
 
-val lalakiCentralVersion: String by project
 val valtimoVersion: String by project
 val ktlintVersion: String by project
 val ktlintToolVersion: String by project
@@ -76,7 +75,6 @@ subprojects {
         dependencies {
             compileOnly(platform("com.ritense.valtimo:valtimo-dependency-versions:$valtimoVersion"))
             testImplementation(platform("com.ritense.valtimo:valtimo-dependency-versions:$valtimoVersion"))
-            implementation("cn.lalaki.central:central:$lalakiCentralVersion")
             implementation("org.springframework.cloud:spring-cloud-starter-stream-rabbit:4.2.1")
         }
 
@@ -109,6 +107,8 @@ subprojects {
 
         tasks.jar {
             enabled = true
+            // Spring Boot names it -plain, which leaves Maven consumers a POM-only artifact without the jar.
+            archiveClassifier.set("")
             manifest {
                 pluginProperties["pluginArtifactId"]?.let { attributes["Implementation-Title"] = it }
                 pluginProperties["pluginVersion"]?.let { attributes["Implementation-Version"] = it }

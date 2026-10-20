@@ -1,0 +1,7 @@
+[
+    {
+        "processDefinitionKey": "cloud-event-it-case",
+        "canInitializeDocument": true,
+        "startableByUser": true
+    }
+]

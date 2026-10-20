@@ -8,6 +8,9 @@ on:
       - v12
       - main
 
+permissions:
+  contents: read
+
 jobs:
   # -------------------------------------------------------------
   # Using GitHub's API is not supported for push events
@@ -38,7 +41,7 @@ jobs:
           matrix: 'true'
           files: |
             backend/plugin/**
-        uses: tj-actions/changed-files@v45
+        uses: tj-actions/changed-files@48d8f15b2aaa3d255ca5af3eba4870f807ce6b3c # v45
       # NOTE: `since_last_remote_commit: true` is implied by default and falls back to the previous local commit.
 
   Build-and-publish:
