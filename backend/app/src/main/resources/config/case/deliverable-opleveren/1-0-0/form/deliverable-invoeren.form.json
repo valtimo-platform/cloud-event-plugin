@@ -1,0 +1,45 @@
+{
+    "display": "form",
+    "components": [
+        {
+            "label": "Deliverable Titel",
+            "key": "deliverableTitle",
+            "type": "textfield",
+            "input": true,
+            "placeholder": "Voer de titel van de deliverable in",
+            "validate": {
+                "required": true,
+                "maxLength": 200
+            },
+            "tableView": true,
+            "properties": {
+                "sourceKey": "doc:/deliverableTitle",
+                "targetKey": "doc:/deliverableTitle"
+            }
+        },
+        {
+            "label": "Project Key",
+            "key": "projectKey",
+            "type": "textfield",
+            "input": true,
+            "placeholder": "Optioneel: key van het project",
+            "validate": {
+                "required": false,
+                "maxLength": 50
+            },
+            "tableView": true,
+            "properties": {
+                "sourceKey": "doc:/projectKey",
+                "targetKey": "doc:/projectKey"
+            }
+        },
+        {
+            "key": "submit",
+            "type": "button",
+            "input": true,
+            "label": "Opslaan",
+            "tableView": false,
+            "disableOnInvalid": true
+        }
+    ]
+}

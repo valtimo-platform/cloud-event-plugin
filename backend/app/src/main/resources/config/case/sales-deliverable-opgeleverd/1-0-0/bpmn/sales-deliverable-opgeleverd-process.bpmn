@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  expressionLanguage="http://www.w3.org/1999/XPath"
+                  id="Definitions_SalesDeliverableOpgeleverd"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  typeLanguage="http://www.w3.org/2001/XMLSchema">
+
+  <bpmn:process camunda:versionTag="CD:sales-deliverable-opgeleverd:1.0.0"
+                id="sales-deliverable-opgeleverd-process"
+                isClosed="false"
+                isExecutable="true"
+                name="Sales - Deliverable Opgeleverd"
+                processType="None">
+
+    <!-- Message Start Event -->
+    <bpmn:startEvent camunda:asyncAfter="true"
+                     camunda:asyncBefore="true"
+                     id="StartEvent_SalesDeliverableDelivered"
+                     isInterrupting="true"
+                     name="Deliverable opgeleverd">
+      <bpmn:outgoing>Flow_StartToService</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_SalesDeliverable"
+                                   messageRef="Message_SalesDeliverableDelivered"/>
+    </bpmn:startEvent>
+
+    <!-- Service Task: Write deliverable data to document -->
+    <bpmn:serviceTask id="ServiceTask_VastleggenDeliverable"
+                      name="Deliverable gegevens vastleggen"
+                      camunda:expression="${valueResolverDelegateService.handleValue(execution, 'doc:/deliverable', cloudEventData)}">
+      <bpmn:incoming>Flow_StartToService</bpmn:incoming>
+      <bpmn:outgoing>Flow_ServiceToUser</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- User Task: Decision about demo scenario -->
+    <bpmn:userTask camunda:candidateGroups="ROLE_USER"
+                   id="UserTask_DemoScenarioBeoordelen"
+                   name="Demo scenario beoordelen">
+      <bpmn:incoming>Flow_ServiceToUser</bpmn:incoming>
+      <bpmn:outgoing>Flow_UserToEnd</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- End Event -->
+    <bpmn:endEvent id="EndEvent_ProcessCompleted"
+                   name="Proces afgerond">
+      <bpmn:incoming>Flow_UserToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_StartToService"
+                       sourceRef="StartEvent_SalesDeliverableDelivered"
+                       targetRef="ServiceTask_VastleggenDeliverable"/>
+    <bpmn:sequenceFlow id="Flow_ServiceToUser"
+                       sourceRef="ServiceTask_VastleggenDeliverable"
+                       targetRef="UserTask_DemoScenarioBeoordelen"/>
+    <bpmn:sequenceFlow id="Flow_UserToEnd"
+                       sourceRef="UserTask_DemoScenarioBeoordelen"
+                       targetRef="EndEvent_ProcessCompleted"/>
+  </bpmn:process>
+
+  <!-- Message Definition -->
+  <bpmn:message id="Message_SalesDeliverableDelivered"
+                name="SalesDeliverableDeliveredMessage"/>
+
+  <!-- Diagram -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_SalesDeliverableOpgeleverd">
+    <bpmndi:BPMNPlane bpmnElement="sales-deliverable-opgeleverd-process" id="BPMNPlane_1">
+      <bpmndi:BPMNShape bpmnElement="StartEvent_SalesDeliverableDelivered" id="Shape_StartEvent">
+        <dc:Bounds height="36" width="36" x="152" y="102"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds height="27" width="62" x="139" y="145"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="ServiceTask_VastleggenDeliverable" id="Shape_ServiceTask">
+        <dc:Bounds height="80" width="100" x="240" y="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="UserTask_DemoScenarioBeoordelen" id="Shape_UserTask">
+        <dc:Bounds height="80" width="100" x="400" y="80"/>
+        <bpmndi:BPMNLabel/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="EndEvent_ProcessCompleted" id="Shape_EndEvent">
+        <dc:Bounds height="36" width="36" x="562" y="102"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds height="14" width="74" x="543" y="145"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="Flow_StartToService" id="Edge_StartToService">
+        <di:waypoint x="188" y="120"/>
+        <di:waypoint x="240" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_ServiceToUser" id="Edge_ServiceToUser">
+        <di:waypoint x="340" y="120"/>
+        <di:waypoint x="400" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_UserToEnd" id="Edge_UserToEnd">
+        <di:waypoint x="500" y="120"/>
+        <di:waypoint x="562" y="120"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

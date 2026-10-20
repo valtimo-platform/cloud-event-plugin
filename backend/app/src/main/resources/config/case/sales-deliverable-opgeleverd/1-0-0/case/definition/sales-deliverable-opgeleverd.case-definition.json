@@ -1,0 +1,8 @@
+{
+    "key": "sales-deliverable-opgeleverd",
+    "name": "Sales - Deliverable Opgeleverd",
+    "versionTag": "1.0.0",
+    "final": false,
+    "canHaveAssignee": false,
+    "autoAssignTasks": false
+}

@@ -1,0 +1,101 @@
+[
+    {
+        "key": "overzicht",
+        "widgets": [
+            {
+                "type": "fields",
+                "key": "deliverable-info",
+                "title": "Deliverable Informatie",
+                "width": 2,
+                "highContrast": true,
+                "properties": {
+                    "columns": [
+                        [
+                            {
+                                "key": "deliverableId",
+                                "title": "Deliverable ID",
+                                "value": "doc:/deliverableId",
+                                "displayProperties": {
+                                    "type": "text"
+                                }
+                            },
+                            {
+                                "key": "deliverableTitle",
+                                "title": "Titel",
+                                "value": "doc:/deliverableTitle",
+                                "displayProperties": {
+                                    "type": "text"
+                                }
+                            }
+                        ],
+                        [
+                            {
+                                "key": "deliverableStatus",
+                                "title": "Status",
+                                "value": "doc:/deliverableStatus",
+                                "displayProperties": {
+                                    "type": "text"
+                                }
+                            },
+                            {
+                                "key": "projectId",
+                                "title": "Project ID",
+                                "value": "doc:/projectId",
+                                "displayProperties": {
+                                    "type": "text"
+                                }
+                            }
+                        ]
+                    ]
+                }
+            },
+            {
+                "type": "fields",
+                "key": "event-info",
+                "title": "Event Informatie",
+                "width": 2,
+                "highContrast": false,
+                "properties": {
+                    "columns": [
+                        [
+                            {
+                                "key": "eventType",
+                                "title": "Event Type",
+                                "value": "doc:/cloudEventType",
+                                "displayProperties": {
+                                    "type": "text"
+                                }
+                            },
+                            {
+                                "key": "eventId",
+                                "title": "Event ID",
+                                "value": "doc:/cloudEventId",
+                                "displayProperties": {
+                                    "type": "text"
+                                }
+                            }
+                        ],
+                        [
+                            {
+                                "key": "eventSource",
+                                "title": "Bron",
+                                "value": "doc:/cloudEventSource",
+                                "displayProperties": {
+                                    "type": "text"
+                                }
+                            },
+                            {
+                                "key": "eventTime",
+                                "title": "Tijdstip",
+                                "value": "doc:/cloudEventTime",
+                                "displayProperties": {
+                                    "type": "text"
+                                }
+                            }
+                        ]
+                    ]
+                }
+            }
+        ]
+    }
+]

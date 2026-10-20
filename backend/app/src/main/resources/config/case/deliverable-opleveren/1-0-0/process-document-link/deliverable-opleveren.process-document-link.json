@@ -1,0 +1,7 @@
+[
+    {
+        "processDefinitionKey": "deliverable-opleveren-process",
+        "canInitializeDocument": true,
+        "startableByUser": true
+    }
+]

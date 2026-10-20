@@ -1,0 +1,35 @@
+{
+    "integrations": [
+        {
+            "id": "a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+            "name": "Local plugin host",
+            "kind": "PLUGIN_HOST",
+            "baseUrl": "http://localhost:8092",
+            "secret": "admin-secret-token",
+            "gzacCallbackBaseUrl": "http://host.docker.internal:8080",
+            "eventBrokerAmqpUrl": "amqp://guest:guest@plugin-rabbitmq:5672",
+            "eventBrokerExchange": "valtimo-events",
+            "frontendOrigins": ["http://localhost:4200"],
+            "configurations": [
+                {
+                    "id": "a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5001",
+                    "title": "Master Data Hub",
+                    "pluginId": "masterdata-hub",
+                    "pluginVersion": "0.1.0",
+                    "properties": {
+                        "hubUrl": "http://host.docker.internal:8090",
+                        "tokenUrl": "http://host.docker.internal:8081/auth/realms/masterdata-hub/protocol/openid-connect/token",
+                        "clientId": "valtimo",
+                        "clientSecret": "valtimo-mdh-secret"
+                    },
+                    "grantedCapabilities": [
+                        "http_request",
+                        "log"
+                    ],
+                    "grantedEndpoints": [],
+                    "grantedEvents": []
+                }
+            ]
+        }
+    ]
+}

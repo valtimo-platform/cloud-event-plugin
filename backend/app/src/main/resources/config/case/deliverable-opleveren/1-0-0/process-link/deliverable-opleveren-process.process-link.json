@@ -1,0 +1,71 @@
+[
+    {
+        "activityId": "StartEvent_DeliverableOpleveren",
+        "activityType": "bpmn:StartEvent:start",
+        "processLinkType": "form",
+        "formDefinitionName": "deliverable-invoeren"
+    },
+    {
+        "activityId": "UserTask_InvullenDeliverable",
+        "activityType": "bpmn:UserTask:create",
+        "formDefinitionName": "deliverable-invoeren",
+        "viewModelEnabled": false,
+        "formDisplayType": "panel",
+        "formSize": "medium",
+        "subtitles": [],
+        "processLinkType": "form"
+    },
+    {
+        "activityId": "ServiceTask_CreateDeliverable",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "external_plugin",
+        "externalPluginConfigurationId": "a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5001",
+        "actionKey": "create-deliverable",
+        "referenceType": "FIXED",
+        "pluginDefinitionKey": "masterdata-hub",
+        "pluginVersion": "0.1.0",
+        "actionProperties": {
+            "title": "doc:/deliverableTitle"
+        },
+        "actionResultMappings": [
+            {
+                "source": "/id",
+                "target": "doc:/deliverableId"
+            },
+            {
+                "source": "/status",
+                "target": "doc:/deliverableStatus"
+            }
+        ]
+    },
+    {
+        "activityId": "UserTask_BeoordelenDeliverable",
+        "activityType": "bpmn:UserTask:create",
+        "formDefinitionName": "deliverable-beoordelen",
+        "viewModelEnabled": false,
+        "formDisplayType": "panel",
+        "formSize": "medium",
+        "subtitles": [],
+        "processLinkType": "form"
+    },
+    {
+        "activityId": "ServiceTask_UpdateStatusDelivered",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "external_plugin",
+        "externalPluginConfigurationId": "a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5001",
+        "actionKey": "update-deliverable-status",
+        "referenceType": "FIXED",
+        "pluginDefinitionKey": "masterdata-hub",
+        "pluginVersion": "0.1.0",
+        "actionProperties": {
+            "deliverableId": "doc:/deliverableId",
+            "status": "opgeleverd"
+        },
+        "actionResultMappings": [
+            {
+                "source": "/status",
+                "target": "doc:/deliverableStatus"
+            }
+        ]
+    }
+]

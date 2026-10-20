@@ -1,0 +1,80 @@
+{
+    "display": "form",
+    "components": [
+        {
+            "key": "deliverableInfo",
+            "type": "panel",
+            "title": "Deliverable informatie",
+            "components": [
+                {
+                    "key": "doc:deliverable.title",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Titel",
+                    "disabled": true,
+                    "tableView": true
+                },
+                {
+                    "key": "doc:deliverable.status",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Status",
+                    "disabled": true,
+                    "tableView": true
+                },
+                {
+                    "key": "doc:deliverable.projectId",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Project ID",
+                    "disabled": true,
+                    "tableView": true
+                }
+            ]
+        },
+        {
+            "key": "besluitPanel",
+            "type": "panel",
+            "title": "Besluit",
+            "components": [
+                {
+                    "key": "doc:besluit.aanpassingNodig",
+                    "type": "radio",
+                    "input": true,
+                    "label": "Aanpassing demo scenario nodig?",
+                    "values": [
+                        {
+                            "label": "Ja",
+                            "value": "true"
+                        },
+                        {
+                            "label": "Nee",
+                            "value": "false"
+                        }
+                    ],
+                    "validate": {
+                        "required": true
+                    },
+                    "tableView": false
+                },
+                {
+                    "key": "doc:besluit.toelichting",
+                    "type": "textarea",
+                    "input": true,
+                    "label": "Toelichting",
+                    "placeholder": "Geef een toelichting bij je besluit...",
+                    "autoExpand": true,
+                    "tableView": true
+                }
+            ]
+        },
+        {
+            "key": "submit",
+            "type": "button",
+            "input": true,
+            "label": "Besluit opslaan",
+            "tableView": false,
+            "disableOnInvalid": true
+        }
+    ]
+}

@@ -1,0 +1,21 @@
+{
+  "specversion": "1.0",
+  "id": "deliverable-delivered-001",
+  "source": "masterdata-hub",
+  "type": "com.ritense.masterdata.deliverable.status.delivered",
+  "time": "2026-10-16T14:00:00Z",
+  "datacontenttype": "application/json",
+  "data": {
+    "userId": "thomas.minke",
+    "roles": [],
+    "resultType": "deliverable",
+    "resultId": "del-abc-123",
+    "result": {
+      "id": "del-abc-123",
+      "version": 2,
+      "title": "Feature: Multi-tenant support",
+      "status": "opgeleverd",
+      "projectId": "proj-xyz-789"
+    }
+  }
+}

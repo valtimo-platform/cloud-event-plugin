@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  expressionLanguage="http://www.w3.org/1999/XPath"
+                  id="Definitions_DeliverableOpleveren"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  typeLanguage="http://www.w3.org/2001/XMLSchema">
+
+  <bpmn:process camunda:versionTag="CD:deliverable-opleveren:1.0.0"
+                id="deliverable-opleveren-process"
+                isClosed="false"
+                isExecutable="true"
+                name="Deliverable Opleveren"
+                processType="None">
+
+    <!-- Start Event -->
+    <bpmn:startEvent camunda:asyncAfter="true"
+                     id="StartEvent_DeliverableOpleveren"
+                     name="Start oplevering">
+      <bpmn:outgoing>Flow_StartToUserTaskInput</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- User Task: Input deliverable details -->
+    <bpmn:userTask camunda:candidateGroups="ROLE_USER"
+                   id="UserTask_InvullenDeliverable"
+                   name="Deliverable gegevens invoeren">
+      <bpmn:incoming>Flow_StartToUserTaskInput</bpmn:incoming>
+      <bpmn:outgoing>Flow_InputToCreateDeliverable</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- Service Task: Create deliverable via plugin -->
+    <bpmn:serviceTask id="ServiceTask_CreateDeliverable"
+                      name="Deliverable aanmaken"
+                      camunda:asyncBefore="true">
+      <bpmn:incoming>Flow_InputToCreateDeliverable</bpmn:incoming>
+      <bpmn:outgoing>Flow_CreateToReview</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- User Task: Review deliverable -->
+    <bpmn:userTask camunda:candidateGroups="ROLE_USER"
+                   id="UserTask_BeoordelenDeliverable"
+                   name="Deliverable beoordelen">
+      <bpmn:incoming>Flow_CreateToReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_ReviewToGateway</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- Gateway: Approved or not -->
+    <bpmn:exclusiveGateway id="Gateway_Goedgekeurd"
+                           name="Goedgekeurd?">
+      <bpmn:incoming>Flow_ReviewToGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_GatewayToDeliver</bpmn:outgoing>
+      <bpmn:outgoing>Flow_GatewayToEnd</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Service Task: Update status to delivered -->
+    <bpmn:serviceTask id="ServiceTask_UpdateStatusDelivered"
+                      name="Status naar opgeleverd"
+                      camunda:asyncBefore="true">
+      <bpmn:incoming>Flow_GatewayToDeliver</bpmn:incoming>
+      <bpmn:outgoing>Flow_DeliverToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- End Event: Delivered -->
+    <bpmn:endEvent id="EndEvent_Opgeleverd"
+                   name="Opgeleverd">
+      <bpmn:incoming>Flow_DeliverToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- End Event: Not approved -->
+    <bpmn:endEvent id="EndEvent_NietGoedgekeurd"
+                   name="Niet goedgekeurd">
+      <bpmn:incoming>Flow_GatewayToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_StartToUserTaskInput"
+                       sourceRef="StartEvent_DeliverableOpleveren"
+                       targetRef="UserTask_InvullenDeliverable"/>
+    <bpmn:sequenceFlow id="Flow_InputToCreateDeliverable"
+                       sourceRef="UserTask_InvullenDeliverable"
+                       targetRef="ServiceTask_CreateDeliverable"/>
+    <bpmn:sequenceFlow id="Flow_CreateToReview"
+                       sourceRef="ServiceTask_CreateDeliverable"
+                       targetRef="UserTask_BeoordelenDeliverable"/>
+    <bpmn:sequenceFlow id="Flow_ReviewToGateway"
+                       sourceRef="UserTask_BeoordelenDeliverable"
+                       targetRef="Gateway_Goedgekeurd"/>
+    <bpmn:sequenceFlow id="Flow_GatewayToDeliver"
+                       name="Ja"
+                       sourceRef="Gateway_Goedgekeurd"
+                       targetRef="ServiceTask_UpdateStatusDelivered">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${valueResolverDelegateService.resolveValue(execution, 'doc:/goedgekeurd') == 'true'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_GatewayToEnd"
+                       name="Nee"
+                       sourceRef="Gateway_Goedgekeurd"
+                       targetRef="EndEvent_NietGoedgekeurd">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${valueResolverDelegateService.resolveValue(execution, 'doc:/goedgekeurd') != 'true'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_DeliverToEnd"
+                       sourceRef="ServiceTask_UpdateStatusDelivered"
+                       targetRef="EndEvent_Opgeleverd"/>
+  </bpmn:process>
+
+  <!-- Diagram -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_DeliverableOpleveren">
+    <bpmndi:BPMNPlane bpmnElement="deliverable-opleveren-process" id="BPMNPlane_1">
+      <bpmndi:BPMNShape bpmnElement="StartEvent_DeliverableOpleveren" id="Shape_StartEvent">
+        <dc:Bounds height="36" width="36" x="152" y="102"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds height="27" width="62" x="139" y="145"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="UserTask_InvullenDeliverable" id="Shape_UserTaskInput">
+        <dc:Bounds height="80" width="100" x="240" y="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="ServiceTask_CreateDeliverable" id="Shape_CreateDeliverable">
+        <dc:Bounds height="80" width="100" x="400" y="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="UserTask_BeoordelenDeliverable" id="Shape_UserTaskReview">
+        <dc:Bounds height="80" width="100" x="560" y="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="Gateway_Goedgekeurd" id="Shape_Gateway" isMarkerVisible="true">
+        <dc:Bounds height="50" width="50" x="720" y="95"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds height="14" width="62" x="714" y="65"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="ServiceTask_UpdateStatusDelivered" id="Shape_UpdateStatus">
+        <dc:Bounds height="80" width="100" x="830" y="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="EndEvent_Opgeleverd" id="Shape_EndOpgeleverd">
+        <dc:Bounds height="36" width="36" x="992" y="102"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds height="14" width="60" x="980" y="145"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="EndEvent_NietGoedgekeurd" id="Shape_EndNietGoedgekeurd">
+        <dc:Bounds height="36" width="36" x="727" y="202"/>
+        <bpmndi:BPMNLabel>
+          <dc:Bounds height="14" width="82" x="704" y="245"/>
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="Flow_StartToUserTaskInput" id="Edge_StartToInput">
+        <di:waypoint x="188" y="120"/>
+        <di:waypoint x="240" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_InputToCreateDeliverable" id="Edge_InputToCreate">
+        <di:waypoint x="340" y="120"/>
+        <di:waypoint x="400" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_CreateToReview" id="Edge_CreateToReview">
+        <di:waypoint x="500" y="120"/>
+        <di:waypoint x="560" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_ReviewToGateway" id="Edge_ReviewToGateway">
+        <di:waypoint x="660" y="120"/>
+        <di:waypoint x="720" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_GatewayToDeliver" id="Edge_GatewayToDeliver">
+        <di:waypoint x="770" y="120"/>
+        <di:waypoint x="830" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_GatewayToEnd" id="Edge_GatewayToEnd">
+        <di:waypoint x="745" y="145"/>
+        <di:waypoint x="745" y="202"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_DeliverToEnd" id="Edge_DeliverToEnd">
+        <di:waypoint x="930" y="120"/>
+        <di:waypoint x="992" y="120"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

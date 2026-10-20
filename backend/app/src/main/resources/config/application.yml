@@ -3,6 +3,33 @@ spring:
     name: cloud-event-plugin-application
   profiles:
     active: dev
+  cloud:
+    function:
+      definition: kotlinInboxCloudEventConsumer
+    stream:
+      bindings:
+        kotlinInboxCloudEventConsumer-in-0:
+          destination: valtimo-events
+          group: valtimo-inbox
+          binder: rabbit
+      rabbit:
+        bindings:
+          kotlinInboxCloudEventConsumer-in-0:
+            consumer:
+              bindQueue: false
+              declareExchange: false
+              queueNameGroupOnly: true
+      binders:
+        rabbit:
+          type: rabbit
+          environment:
+            spring:
+              rabbitmq:
+                host: localhost
+                port: 5672
+                username: guest
+                password: guest
+                virtual-host: /
   jackson:
     date-format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z'
     time-zone: UTC
@@ -70,6 +97,8 @@ valtimo:
   database: postgres
   app:
     scheme: http
+  external-plugin:
+    enabled: true
   oauth:
     tokenValidityInSeconds: 3600 # Token is valid 1 hour
   hardening:
@@ -120,6 +149,11 @@ valtimo:
 spring-actuator:
   username: admin
   password: password
+
+logging:
+  level:
+    com.ritense.inbox: DEBUG
+    com.ritense.valtimoplugins.cloudevent: DEBUG
 
 audit:
   record:

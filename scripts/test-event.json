@@ -1,0 +1,17 @@
+{
+  "specversion": "1.0",
+  "id": "test-001",
+  "source": "masterdata-hub",
+  "type": "com.example.cloud-event.test",
+  "time": "2026-10-16T10:00:00Z",
+  "datacontenttype": "application/json",
+  "data": {
+    "userId": "test-user",
+    "roles": [],
+    "resultType": "test",
+    "resultId": "test-001",
+    "result": {
+      "message": "Hello from masterdata-hub"
+    }
+  }
+}
