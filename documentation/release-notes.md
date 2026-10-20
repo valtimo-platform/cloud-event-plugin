@@ -2,6 +2,24 @@
 
 Overzicht van wijzigingen per versie van de Cloud Event-plugin.
 
+## 0.1.6
+
+Binnenkomende cloud events worden betrouwbaarder afgehandeld:
+
+- Een wachtende message catch event ontvangt het event nu ook achter een event-based gateway, en ook als de naam van
+  het bericht een expressie bevat.
+- Eén event zet elk wachtend proces precies één keer voort: niet twee gekoppelde stappen achter elkaar, en niet
+  dubbel als een receive task een asynchrone voortzetting heeft. Parallelle takken worden allebei voortgezet.
+- Een verkeerd ingestelde of opgeschorte koppeling wordt overgeslagen met een waarschuwing, in plaats van het event en
+  alle andere koppelingen te laten mislukken.
+- Een koppeling op een message start event heeft nu een event type filter nodig. Zonder filter zou elk event, ook die
+  van Valtimo zelf, een nieuw dossier starten.
+- Alleen events die bij een koppeling passen worden als verwerkt vastgelegd, en een event dat gelijktijdig dubbel
+  binnenkomt wordt maar één keer verwerkt.
+
+JSON die in het data-veld van de publish-actie wordt ingevuld, wordt nu als JSON verstuurd in plaats van als tekst.
+Het gepubliceerde backend-artefact is nu een gewone jar, zodat ook Maven-projecten het kunnen gebruiken.
+
 ## 0.1.5
 
 Spring Cloud Starter Stream Rabbit als API dependency toegevoegd.

@@ -39,12 +39,15 @@ import com.ritense.valtimoplugins.cloudevent.repository.ProcessedCloudEventRepos
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.operaton.bpm.engine.RepositoryService
 import org.operaton.bpm.engine.RuntimeService
-import org.operaton.bpm.engine.runtime.Execution
+import org.operaton.bpm.engine.runtime.ActivityInstance
 import org.operaton.bpm.model.bpmn.instance.CatchEvent
 import org.operaton.bpm.model.bpmn.instance.MessageEventDefinition
+import org.operaton.bpm.model.bpmn.instance.Process
+import org.operaton.bpm.model.xml.instance.ModelElementInstance
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 open class CloudEventProcessLinkListener(
     private val pluginProcessLinkRepository: ValtimoPluginProcessLinkRepository,
@@ -58,33 +61,46 @@ open class CloudEventProcessLinkListener(
     private val objectMapper: ObjectMapper,
     private val processedCloudEventRepository: ProcessedCloudEventRepository,
 ) : ValtimoEventHandler {
+    private val linksWarnedAboutMissingFilter = ConcurrentHashMap.newKeySet<UUID>()
+
     @RunWithoutAuthorization
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     override fun handle(event: ValtimoEvent) {
         logger.debug { "Handling incoming cloud event with type '${event.type}'" }
 
-        if (processedCloudEventRepository.existsById(event.id)) {
-            logger.debug { "Skipping duplicate cloud event '${event.id}'" }
-            return
-        }
-        processedCloudEventRepository.save(ProcessedCloudEvent(eventId = event.id))
-
-        val processLinks: List<PluginProcessLink> =
+        // Matched first: the inbox carries Valtimo's own events too, which need no deduplication.
+        val processLinks =
             pluginProcessLinkRepository
                 .findByPluginActionDefinitionKey(ACTION_KEY)
-        // .findByPluginDefinitionKeyAndPluginActionDefinitionKey(PLUGIN_KEY, ACTION_KEY)
+                .filter { matchesFilter(event, it) }
         if (processLinks.isEmpty()) {
             logger.debug { "Cloud event '${event.id}' matched no receive-cloud-event process link" }
             return
         }
 
+        if (processedCloudEventRepository.existsById(event.id)) {
+            logger.debug { "Skipping duplicate cloud event '${event.id}'" }
+            return
+        }
+        // Inserted and flushed now, so a concurrent delivery of the same event fails on this row
+        // before it acts on anything, rather than after.
+        processedCloudEventRepository.saveAndFlush(ProcessedCloudEvent(eventId = event.id))
+
         val variables = buildProcessVariables(event)
-        processLinks.forEach { processLink ->
-            if (matchesFilter(event, processLink)) {
+        // What waits at each link is collected before any link acts: an execution this event moves
+        // onto another linked activity, or a process it starts, must not receive the same event again.
+        val linksWithWaits =
+            processLinks.map { processLink ->
                 when (processLink.activityType) {
-                    ActivityTypeWithEventName.MESSAGE_START_EVENT_START -> startProcessByMessage(processLink, variables)
-                    else -> signalWaitingExecutions(processLink, variables)
+                    ActivityTypeWithEventName.MESSAGE_START_EVENT_START -> processLink to null
+                    else -> processLink to findWaits(processLink)
                 }
+            }
+        linksWithWaits.forEach { (processLink, waits) ->
+            if (waits == null) {
+                startProcessByMessage(processLink, variables)
+            } else {
+                continueWaits(processLink, waits, variables)
             }
         }
     }
@@ -93,59 +109,167 @@ open class CloudEventProcessLinkListener(
         event: ValtimoEvent,
         processLink: PluginProcessLink,
     ): Boolean {
-        val properties = processLink.actionProperties ?: return true
-        val filter = objectMapper.treeToValue(properties, ReceiveCloudEventProperties::class.java)
-        return !(!filter.eventType.isNullOrBlank() && filter.eventType != event.type)
+        val filter =
+            processLink.actionProperties
+                ?.let { objectMapper.treeToValue(it, ReceiveCloudEventProperties::class.java) }
+                ?.eventType
+                ?.trim()
+                ?.takeUnless { it.isEmpty() }
+        // With no filter every event in the inbox would start a process, Valtimo's own included, and
+        // with them the DocumentCreated event of each case this starts: a loop without end.
+        if (filter == null && processLink.activityType == ActivityTypeWithEventName.MESSAGE_START_EVENT_START) {
+            // Once per link: this is checked for every event in the inbox.
+            if (linksWarnedAboutMissingFilter.add(processLink.id)) {
+                logger.warn {
+                    "Skipping process link for '${processLink.processDefinitionId}': a message start event needs an " +
+                        "event type filter"
+                }
+            }
+            return false
+        }
+        return filter == null || filter == event.type
     }
 
-    private fun signalWaitingExecutions(
+    /**
+     * A wait is identified by what the engine keeps while it lasts, not by its execution, whose id
+     * changes when a parallel branch ends and its sibling is pruned into the parent: the activity
+     * instance of a receive task, or the message subscription of a catch event.
+     */
+    private data class Wait(
+        val processInstanceId: String,
+        val id: String,
+    )
+
+    /** Suspended process instances are left waiting: the engine refuses to continue them. */
+    private fun findWaits(processLink: PluginProcessLink): List<Wait> =
+        when (processLink.activityType) {
+            // Behind an event-based gateway the execution waits at the gateway, and only its message
+            // subscription is on the catch event.
+            ActivityTypeWithEventName.INTERMEDIATE_CATCH_EVENT_END ->
+                runtimeService
+                    .createEventSubscriptionQuery()
+                    .eventType(MESSAGE_EVENT_TYPE)
+                    .activityId(processLink.activityId)
+                    .list()
+                    // A message start event's subscription has the same type, but no process instance.
+                    .filter { it.processInstanceId != null }
+                    .filter { subscription ->
+                        runtimeService
+                            .createProcessInstanceQuery()
+                            .processInstanceId(subscription.processInstanceId)
+                            .processDefinitionId(processLink.processDefinitionId)
+                            .active()
+                            .count() > 0
+                    }.map { Wait(it.processInstanceId, it.id) }
+
+            else ->
+                runtimeService
+                    .createExecutionQuery()
+                    .processDefinitionId(processLink.processDefinitionId)
+                    .activityId(processLink.activityId)
+                    .active()
+                    .list()
+                    .map { it.processInstanceId }
+                    .distinct()
+                    .flatMap { processInstanceId ->
+                        enteredReceiveTasks(processInstanceId, processLink).map { Wait(processInstanceId, it.id) }
+                    }
+        }
+
+    /**
+     * Only a receive task that was entered and not yet left has an activity instance. An execution
+     * parked on an asynchronous continuation before or after it has a transition instance instead.
+     */
+    private fun enteredReceiveTasks(
+        processInstanceId: String,
         processLink: PluginProcessLink,
+    ): List<ActivityInstance> =
+        runtimeService
+            .getActivityInstance(processInstanceId)
+            ?.getActivityInstances(processLink.activityId)
+            ?.toList()
+            .orEmpty()
+
+    private fun continueWaits(
+        processLink: PluginProcessLink,
+        waits: List<Wait>,
         variables: Map<String, Any>,
     ) {
-        val executions =
-            runtimeService
-                .createExecutionQuery()
-                .processDefinitionId(processLink.processDefinitionId)
-                .activityId(processLink.activityId)
-                .list()
-
-        if (executions.isEmpty()) {
+        if (waits.isEmpty()) {
             logger.debug {
                 "No waiting executions found for process definition '${processLink.processDefinitionId}' at activity '${processLink.activityId}'"
             }
             return
         }
 
-        executions.forEach { execution ->
-            logger.info {
-                "Signaling execution '${execution.id}' in process instance '${execution.processInstanceId}' at activity '${processLink.activityId}'"
+        waits.forEach { wait ->
+            if (!continueWait(processLink, wait, variables)) {
+                logger.debug {
+                    "Process instance '${wait.processInstanceId}' no longer waits at '${processLink.activityId}'"
+                }
             }
-            continueExecution(execution, processLink, variables)
         }
     }
 
-    private fun continueExecution(
-        execution: Execution,
+    /** False when an earlier link of this event has ended the wait. */
+    private fun continueWait(
         processLink: PluginProcessLink,
+        wait: Wait,
         variables: Map<String, Any>,
-    ) {
+    ): Boolean {
         when (processLink.activityType) {
-            ActivityTypeWithEventName.RECEIVE_TASK_END ->
-                runtimeService.signal(execution.id, variables)
-
             ActivityTypeWithEventName.INTERMEDIATE_CATCH_EVENT_END -> {
-                val messageName = getMessageName(processLink)
-                runtimeService.messageEventReceived(messageName, execution.id, variables)
+                val subscription =
+                    runtimeService
+                        .createEventSubscriptionQuery()
+                        .eventSubscriptionId(wait.id)
+                        .singleResult() ?: return false
+                logger.info {
+                    "Correlating message to execution '${subscription.executionId}' at '${processLink.activityId}'"
+                }
+                // The subscription's name has any expression in the BPMN message name resolved.
+                runtimeService.messageEventReceived(subscription.eventName, subscription.executionId, variables)
+            }
+
+            ActivityTypeWithEventName.RECEIVE_TASK_END -> {
+                val executionId =
+                    enteredReceiveTasks(wait.processInstanceId, processLink)
+                        .firstOrNull { it.id == wait.id }
+                        ?.executionIds
+                        ?.firstOrNull() ?: return false
+                logger.info { "Signaling execution '$executionId' at '${processLink.activityId}'" }
+                runtimeService.signal(executionId, variables)
             }
 
             else -> error("Unsupported activity type '${processLink.activityType}' for cloud event process link")
         }
+        return true
     }
 
     private fun startProcessByMessage(
         processLink: PluginProcessLink,
         variables: Map<String, Any>,
     ) {
+        // An event subprocess's start event has the same activity type, but no process can be started there.
+        val startEvent =
+            repositoryService
+                .getBpmnModelInstance(processLink.processDefinitionId)
+                .getModelElementById<ModelElementInstance>(processLink.activityId)
+        if (startEvent?.parentElement !is Process) {
+            logger.warn {
+                "Skipping process link for '${processLink.processDefinitionId}': " +
+                    "'${processLink.activityId}' is not a start event of the process itself"
+            }
+            return
+        }
+
+        if (repositoryService.getProcessDefinition(processLink.processDefinitionId).isSuspended) {
+            logger.warn {
+                "Skipping process link for '${processLink.processDefinitionId}': the process definition is suspended"
+            }
+            return
+        }
+
         if (processPropertyService.isSystemProcessById(processLink.processDefinitionId)) {
             startSystemProcessByMessage(processLink, variables)
         } else {
@@ -176,7 +300,7 @@ open class CloudEventProcessLinkListener(
             return
         }
 
-        val messageName = getMessageName(processLink)
+        val messageName = getMessageName(processLink) ?: return
         logger.info {
             "Starting system process instance by message '$messageName' for process definition '${processLink.processDefinitionId}'"
         }
@@ -224,7 +348,7 @@ open class CloudEventProcessLinkListener(
             return
         }
 
-        val messageName = getMessageName(processLink)
+        val messageName = getMessageName(processLink) ?: return
         logger.info {
             "Creating a case for case definition '${activeCaseDefinition.id.key}' " +
                 "(${activeCaseDefinition.id.versionTag}) by correlating start message '$messageName' to " +
@@ -244,7 +368,14 @@ open class CloudEventProcessLinkListener(
             }
         val document =
             documentResult.resultingDocument().orElse(null)
-                ?: error("Failed to create a case for the incoming cloud event: ${documentResult.errors()}")
+                ?: run {
+                    // Typically a document schema with required fields, which an empty document cannot meet.
+                    logger.warn {
+                        "Not starting a case for process definition '${processLink.processDefinitionId}': " +
+                            "its document could not be created: ${documentResult.errors()}"
+                    }
+                    return
+                }
 
         // Correlated to the start message rather than started by process definition key.
         // ProcessDocumentService.newDocumentAndStartProcess, the obvious alternative, starts a
@@ -278,7 +409,7 @@ open class CloudEventProcessLinkListener(
                 processDocumentAssociationService.createProcessDocumentInstance(
                     processInstance.id,
                     UUID.fromString(document.id().toString()),
-                    repositoryService.getProcessDefinition(processLink.processDefinitionId).name,
+                    repositoryService.getProcessDefinition(processLink.processDefinitionId).let { it.name ?: it.key },
                 )
             }
         }
@@ -308,28 +439,31 @@ open class CloudEventProcessLinkListener(
         return variables
     }
 
-    private fun getMessageName(processLink: PluginProcessLink): String {
-        val model = repositoryService.getBpmnModelInstance(processLink.processDefinitionId)
+    /** Null, with a warning, when the linked element has no message: configuration is skipped, not thrown. */
+    private fun getMessageName(processLink: PluginProcessLink): String? {
         val element =
-            model.getModelElementById<CatchEvent>(processLink.activityId)
-                ?: error(
-                    "No catch event '${processLink.activityId}' in process definition " +
-                        "'${processLink.processDefinitionId}'",
-                )
-        return element.eventDefinitions
-            .filterIsInstance<MessageEventDefinition>()
-            .firstOrNull()
-            ?.message
-            ?.name
-            ?: error(
-                "No message event definition on element '${processLink.activityId}' in process definition " +
-                    "'${processLink.processDefinitionId}'",
-            )
+            repositoryService
+                .getBpmnModelInstance(processLink.processDefinitionId)
+                .getModelElementById<CatchEvent>(processLink.activityId)
+        val messageName =
+            element
+                ?.eventDefinitions
+                ?.filterIsInstance<MessageEventDefinition>()
+                ?.firstOrNull()
+                ?.message
+                ?.name
+        if (messageName == null) {
+            logger.warn {
+                "Skipping process link for '${processLink.processDefinitionId}': element " +
+                    "'${processLink.activityId}' is not a catch event with a message"
+            }
+        }
+        return messageName
     }
 
     companion object {
         private val logger = KotlinLogging.logger {}
-        private const val PLUGIN_KEY = "cloud-event"
         private const val ACTION_KEY = "receive-cloud-event"
+        private const val MESSAGE_EVENT_TYPE = "message"
     }
 }

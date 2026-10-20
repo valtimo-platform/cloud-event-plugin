@@ -17,6 +17,7 @@
 package com.ritense.valtimoplugins.cloudevent.listener
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.ritense.case.service.CaseDefinitionService
 import com.ritense.case_.domain.definition.CaseDefinition
 import com.ritense.document.domain.Document
@@ -40,29 +41,40 @@ import com.ritense.valtimoplugins.cloudevent.repository.ProcessedCloudEventRepos
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argThat
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.operaton.bpm.engine.RepositoryService
 import org.operaton.bpm.engine.RuntimeService
 import org.operaton.bpm.engine.repository.ProcessDefinition
 import org.operaton.bpm.engine.repository.ProcessDefinitionQuery
+import org.operaton.bpm.engine.runtime.ActivityInstance
+import org.operaton.bpm.engine.runtime.EventSubscription
+import org.operaton.bpm.engine.runtime.EventSubscriptionQuery
+import org.operaton.bpm.engine.runtime.Execution
+import org.operaton.bpm.engine.runtime.ExecutionQuery
 import org.operaton.bpm.engine.runtime.MessageCorrelationBuilder
 import org.operaton.bpm.engine.runtime.ProcessInstance
+import org.operaton.bpm.engine.runtime.ProcessInstanceQuery
 import org.operaton.bpm.model.bpmn.BpmnModelInstance
 import org.operaton.bpm.model.bpmn.instance.CatchEvent
 import org.operaton.bpm.model.bpmn.instance.Message
 import org.operaton.bpm.model.bpmn.instance.MessageEventDefinition
+import org.operaton.bpm.model.bpmn.instance.Process
 import org.semver4j.Semver
+import java.time.LocalDateTime
 import java.util.Optional
 import java.util.UUID
 
 /**
- * Covers starting a process from a `receive-cloud-event` link on a message start event: which
- * links start something, and how the started case is tied to its document.
+ * Covers routing an incoming cloud event to its `receive-cloud-event` links: deduplication, the
+ * event type filter, continuing a waiting execution, and starting a process from a message start
+ * event, including how the started case is tied to its document.
  */
 class CloudEventProcessLinkListenerTest : BaseTest() {
     private lateinit var pluginProcessLinkRepository: ValtimoPluginProcessLinkRepository
@@ -103,11 +115,103 @@ class CloudEventProcessLinkListenerTest : BaseTest() {
             )
     }
 
-    /**
-     * Starting the process by its definition key would enter it at whichever start event
-     * Operaton considers the initial one, which on a process with a plain start event as well is
-     * not this one.
-     */
+    @Test
+    fun `should record an event and skip it when it is delivered again`() {
+        linked(receiveTask())
+        val execution = givenWaitingExecution()
+
+        listener.handle(event())
+        whenever(processedCloudEventRepository.existsById("event-1")).thenReturn(true)
+        listener.handle(event())
+
+        verify(processedCloudEventRepository).saveAndFlush(argThat { eventId == "event-1" })
+        verify(runtimeService, times(1)).signal(eq(execution.id), any<Map<String, Any>>())
+    }
+
+    @Test
+    fun `should not record an event that matches no link`() {
+        // The inbox carries Valtimo's own events too, which would otherwise each leave a row.
+        linked(receiveTask(eventTypeFilter = "nl.example.zaak.closed"))
+
+        listener.handle(event())
+
+        verify(processedCloudEventRepository, never()).saveAndFlush(any())
+    }
+
+    @Test
+    fun `should skip a link whose event type filter does not match`() {
+        linked(receiveTask(eventTypeFilter = "nl.example.zaak.closed"))
+        givenWaitingExecution()
+
+        listener.handle(event())
+
+        verify(runtimeService, never()).signal(any(), any<Map<String, Any>>())
+    }
+
+    @Test
+    fun `should ignore whitespace around an event type filter`() {
+        linked(receiveTask(eventTypeFilter = " nl.example.zaak.created "))
+        val execution = givenWaitingExecution()
+
+        listener.handle(event())
+
+        verify(runtimeService).signal(eq(execution.id), any<Map<String, Any>>())
+    }
+
+    @Test
+    fun `should accept every event on a link with a blank event type filter`() {
+        linked(receiveTask(eventTypeFilter = ""))
+        val execution = givenWaitingExecution()
+
+        listener.handle(event())
+
+        verify(runtimeService).signal(eq(execution.id), any<Map<String, Any>>())
+    }
+
+    @Test
+    fun `should signal a waiting receive task with the event as process variables`() {
+        linked(receiveTask(eventTypeFilter = "nl.example.zaak.created"))
+        val execution = givenWaitingExecution()
+        val result = ObjectMapper().createObjectNode().put("zaakId", "Z-1")
+
+        listener.handle(
+            event(
+                date = LocalDateTime.of(2026, 10, 20, 12, 0),
+                resultType = "zaak",
+                resultId = "Z-1",
+                result = result,
+            ),
+        )
+
+        verify(runtimeService).signal(
+            execution.id,
+            mapOf(
+                "cloudEventId" to "event-1",
+                "cloudEventType" to "nl.example.zaak.created",
+                "cloudEventDate" to "2026-10-20T12:00",
+                "cloudEventResultType" to "zaak",
+                "cloudEventResultId" to "Z-1",
+                "cloudEventData" to result,
+            ),
+        )
+    }
+
+    @Test
+    fun `should correlate the message of a waiting intermediate catch event`() {
+        linked(
+            link(ActivityTypeWithEventName.INTERMEDIATE_CATCH_EVENT_END, CASE_PROCESS_DEFINITION_ID),
+        )
+        val execution = givenWaitingExecution()
+
+        listener.handle(event())
+
+        verify(runtimeService).messageEventReceived(
+            MESSAGE_NAME,
+            execution.id,
+            mapOf("cloudEventId" to "event-1", "cloudEventType" to "nl.example.zaak.created"),
+        )
+    }
+
     @Test
     fun `should start a case by correlating the start message of the linked element`() {
         val link = linked(caseProcessStartEvent())
@@ -158,6 +262,52 @@ class CloudEventProcessLinkListenerTest : BaseTest() {
     }
 
     @Test
+    fun `should skip a case process whose case definition version is no longer active`() {
+        val link = linked(caseProcessStartEvent())
+        givenACaseCanBeStartedFor(link, DOCUMENT_ID)
+        whenever(caseDefinitionService.getActiveCaseDefinition("cloudevents")).thenReturn(
+            CaseDefinition(
+                id = CaseDefinitionId("cloudevents", Semver("2.0.0")),
+                name = "Cloud events",
+                createdDate = null,
+                canHaveAssignee = true,
+            ),
+        )
+
+        listener.handle(event())
+
+        verify(documentService, never()).createDocument(any())
+        verify(runtimeService, never()).createMessageCorrelation(any())
+    }
+
+    @Test
+    fun `should skip a case process whose document cannot be created instead of failing`() {
+        val link = linked(caseProcessStartEvent())
+        givenACaseCanBeStartedFor(link, DOCUMENT_ID)
+        givenStartMessageCorrelates()
+        val failed = mock<CreateDocumentResult>()
+        doReturn(Optional.empty<Document>()).whenever(failed).resultingDocument()
+        whenever(documentService.createDocument(any())).thenReturn(failed)
+
+        listener.handle(event())
+
+        verify(runtimeService, never()).createMessageCorrelation(any())
+    }
+
+    @Test
+    fun `should not start a process from a message start event without an event type filter`() {
+        // Every event in the inbox would start one, the DocumentCreated event of each case it starts included.
+        val link = linked(link(ActivityTypeWithEventName.MESSAGE_START_EVENT_START, CASE_PROCESS_DEFINITION_ID))
+        givenACaseCanBeStartedFor(link, DOCUMENT_ID)
+
+        listener.handle(event())
+
+        verify(processedCloudEventRepository, never()).saveAndFlush(any())
+        verify(documentService, never()).createDocument(any())
+        verify(runtimeService, never()).createMessageCorrelation(any())
+    }
+
+    @Test
     fun `should skip a process that is linked to no case definition`() {
         // An earlier version of a case process, detached when a newer one was deployed.
         val link = linked(caseProcessStartEvent())
@@ -193,24 +343,77 @@ class CloudEventProcessLinkListenerTest : BaseTest() {
         verify(runtimeService, never()).createMessageCorrelation(any())
     }
 
-    private fun linked(link: PluginProcessLink): PluginProcessLink {
+    private fun linked(vararg links: PluginProcessLink): PluginProcessLink {
         whenever(pluginProcessLinkRepository.findByPluginActionDefinitionKey("receive-cloud-event"))
-            .thenReturn(listOf(link))
-        return link
+            .thenReturn(links.toList())
+        return links.first()
+    }
+
+    private fun receiveTask(eventTypeFilter: String? = null): PluginProcessLink =
+        link(ActivityTypeWithEventName.RECEIVE_TASK_END, CASE_PROCESS_DEFINITION_ID, eventTypeFilter)
+
+    private fun link(
+        activityType: ActivityTypeWithEventName,
+        processDefinitionId: String,
+        eventTypeFilter: String? = null,
+    ): PluginProcessLink {
+        val actionProperties = eventTypeFilter?.let { ObjectMapper().createObjectNode().put("eventType", it) }
+        return mock<PluginProcessLink>().also {
+            whenever(it.id).thenReturn(UUID.randomUUID())
+            whenever(it.activityType).thenReturn(activityType)
+            whenever(it.activityId).thenReturn("Event_0beitek")
+            whenever(it.processDefinitionId).thenReturn(processDefinitionId)
+            whenever(it.actionProperties).thenReturn(actionProperties)
+        }
+    }
+
+    /** One process instance that has entered the linked receive task, or waits at the linked catch event. */
+    private fun givenWaitingExecution(): Execution {
+        val execution = mock<Execution>()
+        whenever(execution.id).thenReturn("execution-1")
+        whenever(execution.processInstanceId).thenReturn("process-instance-1")
+        val query = mock<ExecutionQuery>()
+        whenever(query.processDefinitionId(CASE_PROCESS_DEFINITION_ID)).thenReturn(query)
+        whenever(query.activityId("Event_0beitek")).thenReturn(query)
+        whenever(query.active()).thenReturn(query)
+        whenever(query.list()).thenReturn(listOf(execution))
+        whenever(runtimeService.createExecutionQuery()).thenReturn(query)
+
+        val receiveTask = mock<ActivityInstance>()
+        whenever(receiveTask.id).thenReturn("activity-instance-1")
+        whenever(receiveTask.executionIds).thenReturn(arrayOf("execution-1"))
+        val tree = mock<ActivityInstance>()
+        whenever(tree.getActivityInstances("Event_0beitek")).thenReturn(arrayOf(receiveTask))
+        whenever(runtimeService.getActivityInstance("process-instance-1")).thenReturn(tree)
+
+        val subscription = mock<EventSubscription>()
+        whenever(subscription.id).thenReturn("subscription-1")
+        whenever(subscription.executionId).thenReturn("execution-1")
+        whenever(subscription.processInstanceId).thenReturn("process-instance-1")
+        whenever(subscription.eventName).thenReturn(MESSAGE_NAME)
+        val subscriptionQuery = mock<EventSubscriptionQuery>()
+        whenever(subscriptionQuery.eventType("message")).thenReturn(subscriptionQuery)
+        whenever(subscriptionQuery.activityId("Event_0beitek")).thenReturn(subscriptionQuery)
+        whenever(subscriptionQuery.eventSubscriptionId("subscription-1")).thenReturn(subscriptionQuery)
+        whenever(subscriptionQuery.list()).thenReturn(listOf(subscription))
+        whenever(subscriptionQuery.singleResult()).thenReturn(subscription)
+        whenever(runtimeService.createEventSubscriptionQuery()).thenReturn(subscriptionQuery)
+        val processInstanceQuery = mock<ProcessInstanceQuery>()
+        whenever(processInstanceQuery.processInstanceId("process-instance-1")).thenReturn(processInstanceQuery)
+        whenever(processInstanceQuery.processDefinitionId(CASE_PROCESS_DEFINITION_ID)).thenReturn(processInstanceQuery)
+        whenever(processInstanceQuery.active()).thenReturn(processInstanceQuery)
+        whenever(processInstanceQuery.count()).thenReturn(1)
+        whenever(runtimeService.createProcessInstanceQuery()).thenReturn(processInstanceQuery)
+        return execution
     }
 
     private fun caseProcessStartEvent(): PluginProcessLink =
-        mock<PluginProcessLink>().also {
-            whenever(it.activityType).thenReturn(ActivityTypeWithEventName.MESSAGE_START_EVENT_START)
-            whenever(it.activityId).thenReturn("Event_0beitek")
-            whenever(it.processDefinitionId).thenReturn(CASE_PROCESS_DEFINITION_ID)
-        }
+        link(ActivityTypeWithEventName.MESSAGE_START_EVENT_START, CASE_PROCESS_DEFINITION_ID, "nl.example.zaak.created")
+            .also { givenStartableProcess(CASE_PROCESS_DEFINITION_ID) }
 
     private fun systemProcessStartEvent(processDefinitionId: String): PluginProcessLink =
-        mock<PluginProcessLink>().also {
-            whenever(it.activityType).thenReturn(ActivityTypeWithEventName.MESSAGE_START_EVENT_START)
-            whenever(it.activityId).thenReturn("Event_0beitek")
-            whenever(it.processDefinitionId).thenReturn(processDefinitionId)
+        link(ActivityTypeWithEventName.MESSAGE_START_EVENT_START, processDefinitionId, "nl.example.zaak.created").also {
+            givenStartableProcess(processDefinitionId)
             whenever(processPropertyService.isSystemProcessById(processDefinitionId)).thenReturn(true)
         }
 
@@ -276,18 +479,29 @@ class CloudEventProcessLinkListenerTest : BaseTest() {
         whenever(repositoryService.getProcessDefinition(link.processDefinitionId)).thenReturn(processDefinition)
     }
 
-    /** Stubs the BPMN lookup of the message name and the correlation builder chain. */
-    private fun givenStartMessageCorrelates(): MessageCorrelationBuilder {
+    /** A deployed, active process definition whose linked element is a message start event of the process. */
+    private fun givenStartableProcess(processDefinitionId: String) {
+        givenMessageOnLinkedElement()
+        whenever(repositoryService.getProcessDefinition(processDefinitionId)).thenReturn(mock<ProcessDefinition>())
+    }
+
+    /** Stubs the BPMN lookup of the message name on the linked element. */
+    private fun givenMessageOnLinkedElement() {
         val message = mock<Message>()
         whenever(message.name).thenReturn(MESSAGE_NAME)
         val messageEventDefinition = mock<MessageEventDefinition>()
         whenever(messageEventDefinition.message).thenReturn(message)
         val catchEvent = mock<CatchEvent>()
         whenever(catchEvent.eventDefinitions).thenReturn(listOf(messageEventDefinition))
+        whenever(catchEvent.parentElement).thenReturn(mock<Process>())
         val model = mock<BpmnModelInstance>()
         doReturn(catchEvent).whenever(model).getModelElementById<CatchEvent>(any())
         whenever(repositoryService.getBpmnModelInstance(any())).thenReturn(model)
+    }
 
+    /** Stubs the BPMN lookup of the message name and the correlation builder chain. */
+    private fun givenStartMessageCorrelates(): MessageCorrelationBuilder {
+        givenMessageOnLinkedElement()
         val processInstance = mock<ProcessInstance>()
         whenever(processInstance.id).thenReturn(PROCESS_INSTANCE_ID)
         val correlation = mock<MessageCorrelationBuilder>()
@@ -299,17 +513,21 @@ class CloudEventProcessLinkListenerTest : BaseTest() {
         return correlation
     }
 
-    private fun event() =
-        ValtimoEvent(
-            id = "event-1",
-            type = "nl.example.zaak.created",
-            date = null,
-            userId = null,
-            roles = null,
-            resultType = null,
-            resultId = null,
-            result = null,
-        )
+    private fun event(
+        date: LocalDateTime? = null,
+        resultType: String? = null,
+        resultId: String? = null,
+        result: ObjectNode? = null,
+    ) = ValtimoEvent(
+        id = "event-1",
+        type = "nl.example.zaak.created",
+        date = date,
+        userId = null,
+        roles = null,
+        resultType = resultType,
+        resultId = resultId,
+        result = result,
+    )
 
     private companion object {
         private const val CASE_PROCESS_DEFINITION_ID = "Verwerk_cloud_event:1:abc"

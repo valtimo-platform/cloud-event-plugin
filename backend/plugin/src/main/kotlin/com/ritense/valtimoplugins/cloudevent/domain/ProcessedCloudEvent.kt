@@ -20,8 +20,13 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.springframework.data.domain.Persistable
 import java.time.Instant
 
+/**
+ * Always new, so saving it inserts rather than merges: a row another delivery committed in the
+ * meantime then fails the insert instead of being quietly updated.
+ */
 @Entity
 @Table(name = "cloud_event_processed")
 class ProcessedCloudEvent(
@@ -30,4 +35,8 @@ class ProcessedCloudEvent(
     val eventId: String,
     @Column(name = "processed_at", nullable = false)
     val processedAt: Instant = Instant.now(),
-)
+) : Persistable<String> {
+    override fun getId(): String = eventId
+
+    override fun isNew(): Boolean = true
+}

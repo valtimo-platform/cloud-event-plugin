@@ -57,14 +57,9 @@ services:
   plugin-rabbitmq:
     image: rabbitmq:4.1.0-management
     container_name: plugin-docker-compose-plugin-rabbitmq
-    volumes:
-      - ./imports/plugin-rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
-      - ./imports/plugin-rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
     ports:
       - "5672:5672"
       - "15672:15672"
-    environment:
-      RABBITMQ_CONFIG_FILE: /etc/rabbitmq/rabbitmq.conf
     command: >
       bash -c "
         rabbitmq-plugins enable --offline rabbitmq_stream rabbitmq_stream_management &&
