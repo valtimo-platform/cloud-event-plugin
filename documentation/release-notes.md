@@ -2,6 +2,10 @@
 
 Overzicht van wijzigingen per versie van de Cloud Event-plugin.
 
+## 0.1.4
+
+Spring Cloud Starter Stream Rabbit dependency toegevoegd.
+
 ## 0.1.3
 
 Ondersteuning voor Valtimo 13.48.0.
