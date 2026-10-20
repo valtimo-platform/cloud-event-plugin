@@ -2,7 +2,7 @@
 
 Overzicht van wijzigingen per versie van de Cloud Event-plugin.
 
-## 0.1.5
+## 0.1.6
 
 Binnenkomende cloud events worden betrouwbaarder afgehandeld:
 
@@ -19,6 +19,10 @@ Binnenkomende cloud events worden betrouwbaarder afgehandeld:
 
 JSON die in het data-veld van de publish-actie wordt ingevuld, wordt nu als JSON verstuurd in plaats van als tekst.
 Het gepubliceerde backend-artefact is nu een gewone jar, zodat ook Maven-projecten het kunnen gebruiken.
+
+## 0.1.5
+
+Spring Cloud Starter Stream Rabbit als API dependency toegevoegd.
 
 ## 0.1.4
 

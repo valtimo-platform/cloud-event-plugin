@@ -75,7 +75,7 @@ subprojects {
         dependencies {
             compileOnly(platform("com.ritense.valtimo:valtimo-dependency-versions:$valtimoVersion"))
             testImplementation(platform("com.ritense.valtimo:valtimo-dependency-versions:$valtimoVersion"))
-            implementation("org.springframework.cloud:spring-cloud-starter-stream-rabbit:4.2.1")
+            api("org.springframework.cloud:spring-cloud-starter-stream-rabbit:4.2.1")
         }
 
         allOpen {
