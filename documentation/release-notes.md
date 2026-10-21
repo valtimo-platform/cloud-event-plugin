@@ -2,6 +2,9 @@
 
 Overzicht van wijzigingen per versie van de Cloud Event-plugin.
 
+## 0.1.7
+Autoconfiguration van de Inbox wordt nu gedaan na het autoconfiguration van de listener in de plugin.
+
 ## 0.1.6
 
 Binnenkomende cloud events worden betrouwbaarder afgehandeld:

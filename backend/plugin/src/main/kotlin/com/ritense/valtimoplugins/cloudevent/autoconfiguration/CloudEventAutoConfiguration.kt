@@ -33,6 +33,7 @@ import com.ritense.valtimoplugins.cloudevent.repository.ProcessedCloudEventRepos
 import org.operaton.bpm.engine.RepositoryService
 import org.operaton.bpm.engine.RuntimeService
 import org.springframework.boot.autoconfigure.AutoConfiguration
+import org.springframework.boot.autoconfigure.AutoConfigureBefore
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.domain.EntityScan
 import org.springframework.context.annotation.Bean
@@ -41,6 +42,7 @@ import org.springframework.core.annotation.Order
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 
 @AutoConfiguration
+@AutoConfigureBefore(name = ["com.ritense.inbox.config.InboxAutoConfiguration"])
 @EnableJpaRepositories(basePackageClasses = [ProcessedCloudEventRepository::class])
 @EntityScan(basePackageClasses = [ProcessedCloudEvent::class])
 class CloudEventAutoConfiguration {
